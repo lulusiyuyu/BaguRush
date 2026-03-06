@@ -1,0 +1,34 @@
+{
+  "role": "推荐系统工程师",
+  "description": "负责推荐系统算法研发与工程落地，包括召回、排序、重排全链路模型设计，以及多路召回、特征工程、A/B 实验评估等工作。",
+  "required_skills": [
+    "Python（PyTorch / TensorFlow）",
+    "推荐算法（协同过滤、矩阵分解、深度排序模型）",
+    "特征工程（用户/物品/上下文特征）",
+    "Embedding 技术（Word2Vec / Item2Vec）",
+    "SQL 与大数据处理（Spark / Hive）",
+    "机器学习模型评估（AUC / NDCG / HR）"
+  ],
+  "preferred_skills": [
+    "序列推荐模型（SASRec / BERT4Rec / GRU4Rec）",
+    "图神经网络推荐（LightGCN / PinSage）",
+    "多任务学习（MMOE / ESMM）",
+    "强化学习探索与利用（Bandit / RL）",
+    "知识图谱增强推荐",
+    "实时特征工程（Flink / Redis）",
+    "大语言模型在推荐中的应用（LLM4Rec）"
+  ],
+  "interview_topics": [
+    {"topic": "推荐系统架构", "weight": 0.2, "description": "召回/粗排/精排/重排全链路设计，ANN 向量检索（Faiss）"},
+    {"topic": "算法原理", "weight": 0.3, "description": "协同过滤、矩阵分解、DeepFM、DIN、序列推荐模型"},
+    {"topic": "特征工程", "weight": 0.2, "description": "行为序列特征、交叉特征、实时特征更新"},
+    {"topic": "评估与实验", "weight": 0.15, "description": "离线指标(NDCG/HR/MRR)、在线 A/B 实验、辛普森悖论"},
+    {"topic": "冷启动与多样性", "weight": 0.15, "description": "冷启动解决方案、探索与利用、多样性去重策略"}
+  ],
+  "difficulty_distribution": {"easy": 1, "medium": 4, "hard": 3},
+  "typical_projects": [
+    "多路召回系统设计（CF召回 + Embedding召回 + 热门召回）",
+    "排序模型从 LR 到 DeepFM 升级",
+    "实时个性化推荐系统（毫秒级响应）"
+  ]
+}

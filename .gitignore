@@ -1,0 +1,40 @@
+# Env / secrets
+.env
+*.env
+*.env.*
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyc
+*$py.class
+*.egg-info/
+dist/
+build/
+
+# venv
+venv/
+.venv/
+env/
+
+# Uploads & generated artifacts
+bagurush/uploads/*
+!bagurush/uploads/.gitkeep
+bagurush/faiss_index/
+*.faiss
+*.pkl
+
+# Test caches
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

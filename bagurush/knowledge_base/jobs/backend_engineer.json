@@ -1,0 +1,33 @@
+{
+  "role": "后端开发工程师",
+  "description": "负责服务端业务逻辑开发、API 设计与实现、数据库设计与优化，保障系统高可用与高性能。",
+  "required_skills": [
+    "Python / Java / Go（至少一门）",
+    "SQL（MySQL / PostgreSQL）",
+    "RESTful API 设计",
+    "HTTP/HTTPS 协议",
+    "Linux 基础操作",
+    "Git 版本控制"
+  ],
+  "preferred_skills": [
+    "Redis 缓存",
+    "消息队列（Kafka / RabbitMQ）",
+    "Docker / Kubernetes",
+    "微服务架构",
+    "分布式系统设计",
+    "性能调优与监控（Prometheus / Grafana）"
+  ],
+  "interview_topics": [
+    {"topic": "语言基础", "weight": 0.2, "description": "Python/Java/Go 语言特性、内存管理、并发模型"},
+    {"topic": "数据库", "weight": 0.2, "description": "SQL 查询优化、索引原理、事务与锁、分库分表"},
+    {"topic": "系统设计", "weight": 0.25, "description": "高并发设计、缓存策略、消息队列、限流熔断"},
+    {"topic": "网络协议", "weight": 0.15, "description": "HTTP/HTTPS、TCP/IP、WebSocket"},
+    {"topic": "并发与性能", "weight": 0.2, "description": "多线程/协程、锁机制、性能瓶颈定位"}
+  ],
+  "difficulty_distribution": {"easy": 2, "medium": 4, "hard": 2},
+  "typical_projects": [
+    "高并发接口设计（QPS 优化）",
+    "分布式缓存方案设计",
+    "微服务拆分与治理"
+  ]
+}

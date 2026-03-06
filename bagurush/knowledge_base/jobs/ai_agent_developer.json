@@ -1,0 +1,33 @@
+{
+  "role": "AI Agent 开发者",
+  "description": "负责基于大语言模型（LLM）的 AI Agent 系统设计与开发，包括多 Agent 框架搭建、工具调用集成、Prompt 工程优化和 RAG 知识检索系统建设。",
+  "required_skills": [
+    "Python（异步编程 asyncio）",
+    "LangChain / LangGraph 框架",
+    "Prompt Engineering（CoT / ReAct / Few-shot）",
+    "大语言模型 API 对接（OpenAI / DeepSeek / Claude）",
+    "Function / Tool Calling",
+    "RAG 系统设计（向量数据库 + 文档检索）"
+  ],
+  "preferred_skills": [
+    "向量数据库（FAISS / Chroma / Pinecone / Weaviate）",
+    "嵌入模型（text-embedding-ada-002 / BGE / E5）",
+    "Agent 评估框架（RAGAS / TruLens）",
+    "微服务与 API 开发（FastAPI）",
+    "多模态大模型（GPT-4V / Gemini Vision）",
+    "LLM 微调（LoRA / QLoRA）"
+  ],
+  "interview_topics": [
+    {"topic": "LLM 与 Prompt 工程", "weight": 0.25, "description": "CoT / ReAct / ToT、Few-shot、Prompt 调优、幻觉问题"},
+    {"topic": "Agent 框架与 Tool Calling", "weight": 0.25, "description": "LangGraph 状态图、ReAct Agent、工具定义与注册"},
+    {"topic": "RAG 系统设计", "weight": 0.2, "description": "文档切分、嵌入模型选择、向量检索精度优化、重排序"},
+    {"topic": "工程实践", "weight": 0.2, "description": "异步并发、Memory 管理、多 Agent 协作流程设计"},
+    {"topic": "模型评估", "weight": 0.1, "description": "Faithfulness、Answer Relevance、Context Precision"}
+  ],
+  "difficulty_distribution": {"easy": 1, "medium": 4, "hard": 3},
+  "typical_projects": [
+    "多 Agent 协作系统（Planner/Executor/Critic）",
+    "企业知识库 RAG 问答系统",
+    "LLM 驱动的自动化工作流"
+  ]
+}

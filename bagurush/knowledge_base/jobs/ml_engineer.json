@@ -1,0 +1,33 @@
+{
+  "role": "机器学习工程师",
+  "description": "负责机器学习模型的研发、训练优化、上线部署与效果迭代，覆盖从数据处理到模型服务的全链路。",
+  "required_skills": [
+    "Python（NumPy / Pandas / Scikit-learn）",
+    "深度学习框架（PyTorch / TensorFlow）",
+    "机器学习算法（分类、回归、聚类）",
+    "特征工程",
+    "模型评估与调参",
+    "SQL 数据处理"
+  ],
+  "preferred_skills": [
+    "大规模分布式训练（DDP / DeepSpeed）",
+    "模型压缩与量化（TensorRT / ONNX）",
+    "MLOps（MLflow / Kubeflow）",
+    "大语言模型微调（LoRA / SFT）",
+    "Spark / Flink 数据处理",
+    "A/B 实验设计"
+  ],
+  "interview_topics": [
+    {"topic": "机器学习基础", "weight": 0.3, "description": "经典算法原理、损失函数、优化器、正则化"},
+    {"topic": "深度学习", "weight": 0.25, "description": "CNN/RNN/Transformer、反向传播、梯度问题"},
+    {"topic": "模型优化与调参", "weight": 0.2, "description": "过拟合处理、超参调节、BatchNorm/Dropout"},
+    {"topic": "工程实践", "weight": 0.15, "description": "模型部署、在线推理、大规模训练"},
+    {"topic": "数学基础", "weight": 0.1, "description": "线性代数、概率统计、信息论基础"}
+  ],
+  "difficulty_distribution": {"easy": 2, "medium": 3, "hard": 3},
+  "typical_projects": [
+    "从零训练分类/检测模型",
+    "LLM 微调与部署",
+    "海量特征工程管道设计"
+  ]
+}
