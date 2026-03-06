@@ -83,7 +83,7 @@ body {
   border-radius: 8px;
   background: var(--color-accent);
   color: var(--color-text-inverse);
-  font-weight: 700; font-size: 14px;
+  font-weight: 700; font-size: 16px;
   display: flex; align-items: center; justify-content: center;
 }
 .header-title { font-size: 16px; font-weight: 600; color: var(--color-text-primary); }
@@ -238,7 +238,7 @@ body {
 .welcome-logo {
   width: 64px; height: 64px; border-radius: 16px;
   background: var(--color-accent); color: white;
-  font-size: 28px; font-weight: 700;
+  font-size: 36px;
   display: flex; align-items: center; justify-content: center;
   box-shadow: var(--shadow-md);
 }
