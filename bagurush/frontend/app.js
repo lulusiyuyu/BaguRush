@@ -163,7 +163,7 @@ function renderInterviewerMessage(text) {
   const wrapper = document.createElement('div');
   wrapper.className = 'msg-row interviewer';
   wrapper.innerHTML = `
-    <div class="avatar avatar-interviewer">IF</div>
+    <div class="avatar avatar-interviewer">🤖</div>
     <div class="msg-content">
       <div class="msg-interviewer">${escapeHtml(text)}</div>
       <span class="msg-time">${formatTime()}</span>
@@ -182,6 +182,7 @@ function renderCandidateMessage(text) {
       <div class="msg-candidate">${escapeHtml(text)}</div>
       <span class="msg-time" style="text-align:right;">${formatTime()}</span>
     </div>
+    <div class="avatar avatar-candidate">🧑‍💻</div>
   `;
   dom.typingIndicator.before(wrapper);
   state.messages.push({ role: 'candidate', content: text });
