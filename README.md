@@ -82,33 +82,44 @@ pip install -r requirements.txt
 ### 2. 配置 API Key
 
 ```bash
-cp .env.example .env
-# 编辑 .env，填入你的 DeepSeek API Key
+cp bagurush/.env.example bagurush/.env
+# 编辑 bagurush/.env，填入你的 DeepSeek API Key
 # DEEPSEEK_API_KEY=sk-xxxxx
 ```
 
 ### 3. 构建知识库索引
 
 ```bash
+cd bagurush
 python -m rag.vector_store --init
 ```
 
-### 4. 启动服务
+### 4. 启动 / 停止服务（推荐）
+
+项目根目录提供了两个便捷脚本：
 
 ```bash
-# 进入项目目录并激活环境
-cd /path/to/BaguRush/bagurush
-conda activate work   # 或你创建的环境名
+# 后台启动（日志写入 server.log，关闭终端后仍保持运行）
+./start.sh
 
-# 前台启动（可看实时日志，Ctrl+C 退出）
-python -m uvicorn main:app --host 0.0.0.0 --port 8000
-
-# 后台启动（关闭终端后继续运行）
-nohup python -m uvicorn main:app --host 0.0.0.0 --port 8000 > server.log 2>&1 &
-
-# 停止后台服务
-pkill -f "uvicorn main:app"
+# 停止服务
+./stop.sh
 ```
+
+**`start.sh` 说明：**
+- 自动检测是否已有实例在运行，避免重复启动
+- 检查 `bagurush/.env` 是否存在，缺失时给出提示
+- 服务以后台方式运行，PID 写入 `server.pid`，日志写入 `server.log`
+
+**`stop.sh` 说明：**
+- 读取 `server.pid` 定位进程并优雅退出
+- 若 PID 文件不存在，则按进程名兜底查找并终止
+
+> **手动启动（前台，可实时看日志）：**
+> ```bash
+> cd bagurush
+> python -m uvicorn main:app --host 0.0.0.0 --port 8000
+> ```
 
 ### 5. 访问
 
