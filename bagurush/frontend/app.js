@@ -589,13 +589,39 @@ dom.answerTextarea.addEventListener('input', () => {
 });
 
 // End interview buttons
-function endInterview() {
+async function endInterview() {
   if (!confirm('确定要结束当前面试吗？')) return;
-  renderSystemMessage('面试已手动结束');
-  // 直接获取报告（可能还没生成，服务端会返回 400）
-  showReport().catch(() => {
-    renderSystemMessage('报告生成需要等待面试正常结束');
-  });
+  if (!state.sessionId) return;
+
+  renderSystemMessage('面试手动结束，正在生成报告...');
+  setLoading(true);
+  startPipelineAnimation(['结束面试', '汇总评估', '生成报告'], 2000);
+
+  // 启动 LLM 数据流
+  const streamId = generateStreamId();
+  connectLLMStream(streamId);
+
+  try {
+    const res = await fetch(`/api/interview/${state.sessionId}/end`, {
+      method: 'POST',
+      headers: { ...getLlmHeaders(), 'X-Stream-Id': streamId },
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || '结束面试失败');
+    }
+
+    const data = await res.json();
+    completePipeline(['结束面试', '汇总评估', '生成报告']);
+    setLoading(false);
+    renderReport(data);
+
+  } catch (err) {
+    setLoading(false);
+    hidePipeline();
+    renderSystemMessage('⚠️ 生成报告失败: ' + err.message);
+  }
 }
 dom.endBtn.addEventListener('click', endInterview);
 dom.endBtnSide.addEventListener('click', endInterview);
@@ -724,7 +750,12 @@ function generateStreamId() {
 
 function connectLLMStream(streamId) {
   disconnectLLMStream();
+  // 渐入显示
   dom.llmStream.style.display = '';
+  dom.llmStream.classList.remove('fade-out');
+  requestAnimationFrame(() => {
+    dom.llmStream.classList.add('visible');
+  });
   dom.llmStreamContent.textContent = '';
   _currentTokenSpan = null;
 
@@ -748,7 +779,15 @@ function disconnectLLMStream() {
 
 function hideLLMStream() {
   disconnectLLMStream();
-  dom.llmStream.style.display = 'none';
+  // 渐出隐藏
+  dom.llmStream.classList.add('fade-out');
+  dom.llmStream.classList.remove('visible');
+  setTimeout(() => {
+    if (!dom.llmStream.classList.contains('visible')) {
+      dom.llmStream.style.display = 'none';
+      dom.llmStream.classList.remove('fade-out');
+    }
+  }, 450);
 }
 
 function handleStreamEvent(evt) {
@@ -805,9 +844,9 @@ function handleStreamEvent(evt) {
     }
     case 'done': {
       disconnectLLMStream();
-      // 2 秒后自动隐藏
+      // 2 秒后渐出隐藏
       setTimeout(() => {
-        if (!_eventSource) dom.llmStream.style.display = 'none';
+        if (!_eventSource) hideLLMStream();
       }, 2000);
       break;
     }

@@ -4,6 +4,7 @@ FastAPI 路由定义。
 端点：
   POST /api/interview/start              启动面试
   POST /api/interview/{session_id}/answer 提交回答
+  POST /api/interview/{session_id}/end    手动结束面试并生成报告
   GET  /api/interview/{session_id}/status 查询状态
   GET  /api/interview/{session_id}/report 获取报告
   GET  /api/interview/{session_id}/history 对话历史
@@ -304,6 +305,70 @@ async def get_status(session_id: str):
         progress=f"{total}/{max_q}",
         current_topic=ct,
     )
+
+
+# ------------------------------------------------------------------ #
+#  POST /api/interview/{session_id}/end — 手动结束面试
+# ------------------------------------------------------------------ #
+
+@router.post("/{session_id}/end", response_model=ReportResponse)
+async def end_interview(session_id: str, request: Request):
+    """
+    手动结束面试并生成报告。
+    即使面试还没走完所有题目，也会基于已有的评估数据生成报告。
+    """
+    if session_id not in _graphs:
+        raise HTTPException(status_code=404, detail="会话不存在")
+
+    graph = _graphs[session_id]
+    config = _config(session_id)
+    vals = _get_state_values(graph, config)
+
+    # 如果已经完成了，直接返回报告
+    if vals.get("interview_status") == "completed" and vals.get("final_report"):
+        evals = vals.get("all_evaluations", [])
+        scores = [e.get("overall_score", 0) for e in evals if isinstance(e.get("overall_score"), (int, float))]
+        avg = sum(scores) / len(scores) if scores else 0.0
+        return ReportResponse(
+            report=vals.get("final_report", ""),
+            overall_score=round(avg, 2),
+            grade=_compute_grade(avg),
+            evaluations=evals,
+        )
+
+    _apply_llm_config(request)
+    stream_store, _ = _setup_stream(request)
+
+    try:
+        # 直接调用 reporter_node 生成报告
+        from agents.reporter import reporter_node
+
+        report_result = await asyncio.to_thread(reporter_node, vals)
+
+        # 手动更新 graph 状态
+        graph.update_state(config, report_result)
+
+        # 从更新后的状态获取报告
+        updated_vals = _get_state_values(graph, config)
+        final_report = updated_vals.get("final_report") or report_result.get("final_report", "")
+        evals = updated_vals.get("all_evaluations") or vals.get("all_evaluations", [])
+        scores = [e.get("overall_score", 0) for e in evals if isinstance(e.get("overall_score"), (int, float))]
+        avg = sum(scores) / len(scores) if scores else 0.0
+
+        print(f"[API] 面试已手动结束，报告已生成 | session={session_id}")
+
+        return ReportResponse(
+            report=final_report,
+            overall_score=round(avg, 2),
+            grade=_compute_grade(avg),
+            evaluations=evals,
+        )
+
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"生成报告失败: {e}")
+    finally:
+        _teardown_stream(stream_store)
 
 
 # ------------------------------------------------------------------ #

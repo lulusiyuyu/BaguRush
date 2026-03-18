@@ -25,6 +25,16 @@ if [ ! -f "$PROJECT_DIR/.env" ]; then
     exit 1
 fi
 
+# 激活 conda 环境
+CONDA_ENV="/mnt/d/ForWSL/env/bagurush"
+if [ -d "$CONDA_ENV" ]; then
+    source /home/lsy/anaconda3/etc/profile.d/conda.sh
+    conda activate "$CONDA_ENV"
+    echo "已激活 conda 环境：$CONDA_ENV"
+else
+    echo "⚠️  未找到 conda 环境：$CONDA_ENV，使用系统 Python"
+fi
+
 echo "正在启动 BaguRush..."
 cd "$PROJECT_DIR"
 

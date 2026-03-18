@@ -38,3 +38,10 @@ htmlcov/
 # OS
 .DS_Store
 Thumbs.db
+
+# Project context (local only)
+ProjectContext/
+
+# Server runtime
+server.log
+server.pid

@@ -658,21 +658,36 @@ body {
 /* === LLM 数据流窗口 === */
 .llm-stream-window {
   margin-top: 10px;
-  background: #1e1e2e;
+  background: #d6e3f0;
   border-radius: 8px;
   overflow: hidden;
-  border: 1px solid #313244;
+  border: 1px solid #b8cce0;
+  /* 渐入渐出动画 */
+  opacity: 0;
+  transform: translateY(8px) scale(0.97);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+  pointer-events: none;
+}
+.llm-stream-window.visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+.llm-stream-window.fade-out {
+  opacity: 0;
+  transform: translateY(6px) scale(0.97);
 }
 .llm-stream-header {
   display: flex; align-items: center; justify-content: space-between;
   padding: 5px 10px;
-  background: #181825;
-  font-size: 11px; color: #a6adc8;
+  background: #c2d4e6;
+  font-size: 11px; color: #333333;
 }
 .llm-stream-dot {
   width: 6px; height: 6px; border-radius: 50%;
-  background: #a6e3a1;
+  background: #52c41a;
   animation: llmPulse 1s infinite;
+  box-shadow: 0 0 4px rgba(82, 196, 26, 0.5);
 }
 @keyframes llmPulse {
   0%, 100% { opacity: 1; }
@@ -685,14 +700,14 @@ body {
   font-family: 'Cascadia Code', 'Fira Code', Consolas, var(--font-mono);
   font-size: 11px;
   line-height: 1.5;
-  color: #cdd6f4;
+  color: #1a1a1a;
   white-space: pre-wrap;
   word-break: break-all;
 }
 .llm-stream-content::-webkit-scrollbar { width: 4px; }
-.llm-stream-content::-webkit-scrollbar-thumb { background: #45475a; border-radius: 2px; }
-.stream-llm-start { color: #89b4fa; display: block; margin-top: 4px; }
-.stream-tool { color: #f9e2af; display: block; margin-top: 2px; }
-.stream-done { color: #a6e3a1; }
-.stream-error { color: #f38ba8; display: block; }
-.stream-tokens { color: #cdd6f4; }
+.llm-stream-content::-webkit-scrollbar-thumb { background: #a0b8d0; border-radius: 2px; }
+.stream-llm-start { color: #2a6cb0; display: block; margin-top: 4px; font-weight: 500; }
+.stream-tool { color: #b8860b; display: block; margin-top: 2px; }
+.stream-done { color: #389e0d; }
+.stream-error { color: #cf1322; display: block; }
+.stream-tokens { color: #1a1a1a; }
