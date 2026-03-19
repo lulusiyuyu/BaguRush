@@ -104,10 +104,39 @@ class InterviewState(TypedDict):
     next_action: Optional[str]
     """
     Router 决定的下一步动作：
-    - "next_question" : 进入下一个话题
-    - "follow_up"     : 对当前话题追问
-    - "end_interview" : 结束面试，进入 Reporter
+    - "next_question"      : 进入下一个话题
+    - "follow_up"          : 对当前话题追问
+    - "end_interview"      : 结束面试，进入 Reporter
+    - "switch_topic"       : 跳到指定话题（Router 指定 index）
+    - "change_difficulty"  : 调整难度后重新出题
     """
+
+    # -------------------------------------------------------- #
+    #  候选人画像 & 动态决策
+    # -------------------------------------------------------- #
+    candidate_profile: Optional[Dict[str, Any]]
+    """
+    候选人多维画像，Router 决策依据。格式示例：
+    {
+      "dimensions": {
+        "algorithm":     {"score": 6.5, "confidence": 0.3, "evidence": [...]},
+        "system_design": {"score": 4.0, "confidence": 0.3, "evidence": [...]},
+        ...
+      },
+      "weak_spots": ["fundamentals"],
+      "strong_spots": ["communication"],
+    }
+    由 Planner 初始化，Evaluator 每次评估后增量更新。
+    """
+
+    difficulty: str
+    """当前面试难度（easy/medium/hard），默认 medium。Router 可动态调整。"""
+
+    new_findings: Optional[List[str]]
+    """面试中发现的新信息列表（触发 RePlan 的依据）。"""
+
+    completed_topics: List[str]
+    """已完成的话题名称列表（供 RePlan 和 Router 参考）。"""
 
     # -------------------------------------------------------- #
     #  Reporter 输出

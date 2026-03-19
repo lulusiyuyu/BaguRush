@@ -1,9 +1,9 @@
-# ⚡️ BaguRush (八股冲刺)
+# ⚡️ BaguRush (八股冲刺) v2.0
 
 > **"Because your brain deserves a better way to rot."** 🧠💥
 
-**BaguRush** is an AI-powered Interview Agent designed for developers who are tired of soul-crushing interview prep.
-Whether it's **Frontend closures**, **Backend distributed locks**, or **System Design patterns**, we turn the "Technical Brain Rot" (aka *Bagu* / 八股文) into a high-speed, interactive vibe.
+**BaguRush** is an AI-powered multi-Agent Interview System built on **LangGraph**, designed for developers who are tired of soul-crushing interview prep.
+Whether it's **Python GIL**, **distributed system design**, or **recommendation algorithms**, BaguRush delivers an adaptive, knowledge-driven mock interview experience.
 
 > **"Bagu" (八股)** — A term used by Chinese developers to describe the repetitive, must-memorize technical trivia for big-tech interviews.
 
@@ -13,13 +13,16 @@ Whether it's **Frontend closures**, **Backend distributed locks**, or **System D
 
 | 功能 | 说明 |
 |------|------|
-| 📄 **简历驱动** | 上传简历自动解析，出题紧贴候选人背景 |
-| 🤖 **多 Agent 协作** | Planner → Interviewer → Evaluator → Router → Reporter 五节点状态图 |
-| 📊 **四维评估** | 完整性 · 准确性 · 深度 · 表达 实时打分 |
-| 🔁 **智能追问** | 低分自动追问，高分切换话题 |
+| 📄 **简历驱动出题** | 上传简历自动解析，出题紧贴候选人技术背景 |
+| 🤖 **6 Agent 协作** | Planner → Interviewer → Evaluator → Router → Replanner → Reporter 状态图 |
+| 🔍 **RAG 知识驱动** | 四级混合检索（FAISS + BM25 + RRF 融合 + BGE Reranker），出题和评估均由知识库驱动 |
+| 📊 **四维评估 + 候选人画像** | 完整性 · 准确性 · 深度 · 表达 实时打分，五维度动态候选人画像 |
+| 🧠 **自适应面试** | LLM 自主路由（追问/换题/调难度/RePlan），根据候选人表现动态调整 |
 | 📝 **面试报告** | Markdown 格式完整报告：逐题回顾、强弱项分析、改进建议 |
 | 🎨 **LeetCode 风格 UI** | 白灰配色三栏布局，纯 HTML+CSS+JS |
-| ⚡ **实时 LLM 数据流** | 终端风格实时展示模型调用、Token 流、工具调用 |
+| ⚡ **实时 LLM 数据流** | SSE 推送模型调用、Token 消耗、工具调用全过程 |
+| 💾 **会话持久化** | SQLite 持久化 + Token 消耗追踪 |
+| 🚀 **GPU 加速** | CUDA 自动检测，Embedding 和 Reranker 均支持 GPU 推理 |
 
 ---
 
@@ -32,9 +35,10 @@ graph LR
     Interviewer -->|问题 + interrupt| 用户回答
     用户回答 -->|Command resume| Interviewer
     Interviewer --> Evaluator
-    Evaluator -->|四维评分| Router
-    Router -->|追问| Interviewer
-    Router -->|换题| Interviewer
+    Evaluator -->|四维评分 + 画像更新| Router
+    Router -->|追问 / 换题 / 调难度| Interviewer
+    Router -->|动态重规划| Replanner
+    Replanner -->|新大纲| Interviewer
     Router -->|结束| Reporter
     Reporter --> END((结束))
 ```
@@ -44,10 +48,36 @@ graph LR
 | Agent | 职责 | 使用工具 |
 |-------|------|----------|
 | **Planner** | 解析简历 + 获取岗位要求 → 制定面试大纲 | `parse_resume`, `search_job_requirements` |
-| **Interviewer** | 根据大纲生成技术问题 / 追问 → `interrupt()` 等待回答 | `search_tech_knowledge` |
-| **Evaluator** | 提取用户回答 → RAG 获取参考 → 多维评估 | `evaluate_answer`, `search_tech_knowledge` |
-| **Router** | 纯逻辑判断：追问 / 换题 / 结束 | 无 |
-| **Reporter** | 汇总评估 → LLM 生成 Markdown 报告 | 无 |
+| **Interviewer** | 根据大纲出新题 / 追问 → 进入新话题时**主动检索知识库**，基于检索结果设计更有深度的问题 → `interrupt()` 等待候选人回答 | `search_tech_knowledge` |
+| **Evaluator** | 提取候选人回答 → **双重 RAG 检索**（问题 k=4 + 回答 k=2）获取参考 → 多维评估 → 更新候选人画像 → 检测计划外技术提及 | `evaluate_answer`, `search_tech_knowledge` |
+| **Router** | LLM 自主决策：6 种路由（追问 / 换题 / 调难度 / 重规划 / 结束） | 无 |
+| **Replanner** | 当候选人提及 plan 外技术时，动态调整剩余面试计划 | 无 |
+| **Reporter** | 汇总全部评估 → LLM 生成 Markdown 完整面试报告 | 无 |
+
+---
+
+## 🔍 RAG 知识检索体系
+
+BaguRush 的 RAG 不只是"有就行"的装饰，而是实际驱动出题和评估的核心引擎：
+
+### 四级混合检索 Pipeline
+
+```
+用户查询 → FAISS 语义检索 (Top-20)
+         → BM25 关键词检索 (Top-20, jieba 分词)
+         → RRF 倒数排名融合 (k=60, 去重)
+         → BGE Reranker 精排 (Top-k)
+         → 最终结果
+```
+
+### RAG 在面试中的两个作用层次
+
+| 层次 | 场景 | 实现方式 |
+|------|------|----------|
+| **出题引导** | Interviewer 进入新话题时**先检索知识库**，基于检索到的知识点设计更有针对性的问题 | Prompt 中要求"必须调用 `search_tech_knowledge`" |
+| **追问驱动** | Evaluator 评估回答时，用知识库做**对照评分**，找出候选人遗漏的关键概念，据此生成精准追问建议 | 双重检索 + Prompt 要求"指出候选人未覆盖的知识点" |
+
+> 本质上 RAG 把出题和追问从"LLM 凭感觉"变成了"知识库知识点驱动"。
 
 ---
 
@@ -55,13 +85,16 @@ graph LR
 
 | 层级 | 技术 |
 |------|------|
-| LLM | DeepSeek Chat API (`deepseek-chat`) |
-| 编排 | LangGraph 1.0+ (StateGraph, interrupt, Command, MemorySaver) |
-| 嵌入 | BAAI/bge-small-zh-v1.5（本地 512 维） |
-| 向量库 | FAISS（CPU） |
-| 后端 | FastAPI + Uvicorn |
-| 前端 | 纯 HTML + CSS + JavaScript + markdown-it |
-| 数据模型 | Pydantic v2 |
+| **LLM** | DeepSeek Chat API（`deepseek-chat`），兼容 OpenAI 格式，前端可动态配置 |
+| **Agent 编排** | LangGraph 1.0+（StateGraph, interrupt, Command, 条件路由） |
+| **持久化** | SqliteSaver（`interviews.db`），失败自动回退 MemorySaver |
+| **嵌入** | BAAI/bge-small-zh-v1.5（本地 512 维，支持 CUDA） |
+| **向量库** | FAISS（CPU / GPU 自适应） |
+| **BM25** | rank_bm25 + jieba 中文分词 |
+| **Reranker** | BAAI/bge-reranker-base（FlagEmbedding，支持 CUDA + fp16） |
+| **后端** | FastAPI + Uvicorn |
+| **前端** | 纯 HTML + CSS + JavaScript + markdown-it |
+| **数据模型** | Pydantic v2 |
 
 ---
 
@@ -71,7 +104,7 @@ graph LR
 
 ```bash
 # Python 3.10+
-conda create -n bagurush python=3.13
+conda create -n bagurush python=3.11
 conda activate bagurush
 
 # 安装依赖
@@ -83,7 +116,7 @@ pip install -r requirements.txt
 
 ```bash
 cp bagurush/.env.example bagurush/.env
-# 编辑 bagurush/.env，填入你的 DeepSeek API Key
+# 编辑 .env，填入你的 DeepSeek API Key
 # DEEPSEEK_API_KEY=sk-xxxxx
 ```
 
@@ -94,36 +127,37 @@ cd bagurush
 python -m rag.vector_store --init
 ```
 
-### 4. 启动 / 停止服务（推荐）
+### 4. 启动 / 停止服务
+
+> ⚠️ **使用脚本前，请先在当前终端激活 conda 环境**，脚本本身不会自动激活：
+> ```bash
+> conda activate bagurush
+> ```
 
 项目根目录提供了两个便捷脚本：
 
 ```bash
-# 后台启动（日志写入 server.log，关闭终端后仍保持运行）
+# 后台启动（日志写入 server.log）
 ./start.sh
 
 # 停止服务
 ./stop.sh
 ```
 
-**`start.sh` 说明：**
-- 自动检测是否已有实例在运行，避免重复启动
-- 检查 `bagurush/.env` 是否存在，缺失时给出提示
-- 服务以后台方式运行，PID 写入 `server.pid`，日志写入 `server.log`
+**`start.sh`**：使用当前 shell 的 `python` 启动服务，自动检测重复实例和 `.env` 文件，PID 写入 `server.pid`。
 
-**`stop.sh` 说明：**
-- 读取 `server.pid` 定位进程并优雅退出
-- 若 PID 文件不存在，则按进程名兜底查找并终止
+**`stop.sh`**：读取 `server.pid` 优雅退出，PID 文件不存在时按进程名兜底查找。
 
-> **手动启动（前台，可实时看日志）：**
+> **手动前台启动（实时看日志）：**
 > ```bash
-> cd bagurush
-> python -m uvicorn main:app --host 0.0.0.0 --port 8000
+> cd bagurush && python -m uvicorn main:app --host 0.0.0.0 --port 8000
 > ```
 
 ### 5. 访问
 
-打开浏览器访问：**http://localhost:8000**
+打开浏览器：**http://localhost:8000**
+
+启动后可访问 **http://localhost:8000/docs** 查看 Swagger 交互式 API 文档。
 
 ---
 
@@ -132,73 +166,100 @@ python -m rag.vector_store --init
 1. **上传简历** — 支持 PDF / Markdown / TXT 格式
 2. **选择岗位** — 后端开发 / 推荐系统 / ML 工程师 / AI Agent 开发者
 3. **调整参数** — 题目数量（3-10）、每题最大追问次数（1-3）
-4. **开始面试** — AI 自动分析简历、制定大纲、开始提问
-5. **作答交互** — 输入回答（Ctrl+Enter 提交），右侧实时显示评分
+4. **开始面试** — AI 自动分析简历、制定大纲、基于知识库出题
+5. **作答交互** — 输入回答（Ctrl+Enter 提交），右侧实时显示评分与候选人画像
 6. **查看报告** — 面试结束后自动生成完整评估报告
 
 ---
 
-## 📡 API 文档
+## 📡 API 端点
 
 | 方法 | 端点 | 说明 |
 |------|------|------|
 | `POST` | `/api/interview/start` | 上传简历启动面试（multipart/form-data） |
-| `POST` | `/api/interview/{session_id}/answer` | 提交回答（JSON） |
+| `POST` | `/api/interview/{session_id}/answer` | 提交候选人回答 |
+| `POST` | `/api/interview/{session_id}/end` | 手动结束面试并生成报告 |
 | `GET` | `/api/interview/{session_id}/status` | 查询面试状态 |
 | `GET` | `/api/interview/{session_id}/report` | 获取面试报告 |
 | `GET` | `/api/interview/{session_id}/history` | 获取对话历史 |
 | `GET` | `/health` | 健康检查 |
 
-启动后可访问 **http://localhost:8000/docs** 查看 Swagger 交互式文档。
+**LLM 动态配置**：前端可通过 HTTP 请求头配置 LLM（`x-llm-api-key` / `x-llm-base-url` / `x-llm-model`），无需重启服务。
 
 ---
 
 ## 📂 项目结构
 
 ```
-bagurush/
-├── agents/                  # Agent 节点定义
-│   ├── state.py             # InterviewState 类型定义
-│   ├── planner.py           # Planner Agent（面试规划）
-│   ├── interviewer.py       # Interviewer Agent（提问 + interrupt）
-│   ├── evaluator.py         # Evaluator Agent（多维评估）
-│   ├── router.py            # Router 节点（路由逻辑）
-│   ├── reporter.py          # Reporter Agent（报告生成）
-│   └── graph.py             # LangGraph 状态图组装
-├── api/                     # FastAPI 路由
-│   ├── schemas.py           # Pydantic 请求/响应模型
-│   └── routes.py            # 5 个 API 端点
-├── tools/                   # @tool 工具函数
-│   ├── resume_parser.py     # 简历解析（PDF/MD → JSON）
-│   ├── job_search.py        # 岗位要求检索
-│   ├── knowledge_rag.py     # 技术知识 RAG 检索
-│   ├── answer_evaluator.py  # 回答多维评估
-│   └── code_analyzer.py     # 代码质量分析
-├── rag/                     # RAG 知识库管理
-│   ├── embeddings.py        # BGE 嵌入模型封装
-│   ├── document_loader.py   # 文档加载 + 切分
-│   └── vector_store.py      # FAISS 向量存储
-├── prompts/                 # Prompt 模板
-│   ├── planner_prompt.py
-│   ├── interviewer_prompt.py
-│   ├── evaluator_prompt.py
-│   └── reporter_prompt.py
-├── knowledge_base/          # 预置知识库
-│   ├── tech/                # 技术文档（Python/DS/系统设计/ML/推荐系统）
-│   └── jobs/                # 岗位要求 JSON
-├── frontend/                # 前端 UI
-│   ├── index.html           # 页面结构
-│   ├── style.css            # LeetCode 风格样式
-│   ├── app.js               # 交互逻辑
-│   └── markdown-it.min.js   # Markdown 渲染库
-├── tests/                   # 测试
-│   ├── test_tools.py        # 工具函数测试（22 用例）
-│   ├── test_agents.py       # Agent 单元测试（30 用例）
-│   ├── test_graph.py        # 图结构 + API 端点测试（15 用例）
-│   └── test_full_flow.py    # 完整流程集成测试
-├── main.py                  # FastAPI 入口
-├── requirements.txt         # Python 依赖
-└── .env                     # 环境变量（API Key）
+BaguRush/
+├── start.sh                     # 后台启动脚本
+├── stop.sh                      # 停止服务脚本
+├── server.log                   # 运行日志
+├── server.pid                   # 进程 PID 文件
+│
+├── bagurush/                    # 项目主目录
+│   ├── main.py                  # FastAPI 入口（v1.0.0）
+│   ├── requirements.txt         # Python 依赖（21 个包）
+│   ├── pytest.ini               # 测试配置
+│   │
+│   ├── agents/                  # Agent 节点（6 个）
+│   │   ├── state.py             # InterviewState（25+ 字段，7 组）
+│   │   ├── planner.py           # Planner — 简历分析 + 面试规划
+│   │   ├── interviewer.py       # Interviewer — RAG 驱动出题 + interrupt
+│   │   ├── evaluator.py         # Evaluator — 双重 RAG 检索 + 四维评估 + 画像更新
+│   │   ├── router.py            # Router — LLM 自主 6 路由决策
+│   │   ├── replanner.py         # Replanner — 动态重规划
+│   │   ├── reporter.py          # Reporter — Markdown 报告生成
+│   │   └── graph.py             # LangGraph 状态图组装（SqliteSaver 持久化）
+│   │
+│   ├── tools/                   # LangChain @tool（5 个）
+│   │   ├── resume_parser.py     # 简历解析（PDF/MD → JSON + session 向量索引）
+│   │   ├── job_search.py        # 岗位要求检索
+│   │   ├── knowledge_rag.py     # 技术知识 RAG（HybridRetriever）
+│   │   ├── answer_evaluator.py  # 多维评估（四维评分 + profile_update + new_mention）
+│   │   └── code_analyzer.py     # 代码质量分析
+│   │
+│   ├── rag/                     # RAG 检索系统
+│   │   ├── embeddings.py        # BGE 嵌入模型（CUDA 自动检测）
+│   │   ├── document_loader.py   # 文档加载 + 切分
+│   │   ├── vector_store.py      # FAISS 向量存储（全局 + session 级）
+│   │   └── hybrid_retriever.py  # 四级混合检索（FAISS + BM25 + RRF + Reranker）
+│   │
+│   ├── prompts/                 # Prompt 模板
+│   │   ├── planner_prompt.py
+│   │   ├── interviewer_prompt.py  # 含 RAG 强制调用指引
+│   │   ├── evaluator_prompt.py    # 含追问建议原则（参考资料对照）
+│   │   └── reporter_prompt.py
+│   │
+│   ├── utils/                   # 工具模块
+│   │   ├── llm_config.py        # LLM 配置（DeepSeek，支持运行时动态切换）
+│   │   └── llm_events.py        # SSE 事件流 + Token 追踪
+│   │
+│   ├── knowledge_base/          # 预置知识库
+│   │   ├── tech/                # 技术文档（Python / 数据结构 / 系统设计 / ML / 推荐系统）
+│   │   └── jobs/                # 岗位要求 JSON（4 个岗位）
+│   │
+│   ├── frontend/                # 前端 UI
+│   │   ├── index.html           # 页面结构
+│   │   ├── style.css            # LeetCode 风格样式
+│   │   ├── app.js               # 交互逻辑（SSE + Markdown 渲染）
+│   │   └── markdown-it.min.js   # Markdown 渲染库
+│   │
+│   └── tests/                   # 测试（8 个文件，112 用例）
+│       ├── test_agents.py       # Agent 节点 + Prompt 验证（38 用例）
+│       ├── test_tools.py        # 工具函数测试（22 用例）
+│       ├── test_graph.py        # 图结构 + API 端点（16 用例）
+│       ├── test_replanner.py    # 动态重规划（14 用例）
+│       ├── test_hybrid_retriever.py  # 混合检索（10 用例）
+│       ├── test_token_tracker.py     # Token 追踪（7 用例）
+│       ├── test_graph_checkpointer.py  # 持久化（2 用例）
+│       └── test_full_flow.py    # 端到端集成测试（5 用例）
+│
+└── ProjectContext/              # 项目文档
+    ├── Delivery_v2.0.md         # v2.0 交付文档 + 教学指南
+    ├── RAG_Upgrade_Plan.md      # RAG 使用效果提升方案
+    ├── README_v1.0.md           # v1.0 版本 README 存档
+    └── ...                      # 其他上下文文档
 ```
 
 ---
@@ -206,17 +267,19 @@ bagurush/
 ## 🧪 测试
 
 ```bash
-# 运行所有静态测试（不调用 LLM，秒级完成）
-pytest tests/ -v -m "not llm"
+cd bagurush
 
-# 运行全部测试（含 LLM 调用，需要 API Key，约 2-5 分钟）
-pytest tests/ -v
+# 运行全量测试（约 2-3 分钟）
+python -m pytest tests/ -v --tb=short
 
-# 仅运行工具测试
-pytest tests/test_tools.py -v -m "not llm"
+# 仅运行 Agent 相关测试
+python -m pytest tests/test_agents.py -v
+
+# 仅运行 RAG 相关测试
+python -m pytest tests/test_hybrid_retriever.py tests/test_agents.py::TestInterviewerPromptRAG tests/test_agents.py::TestEvaluatorRAGEnhancement tests/test_agents.py::TestEvaluatorPromptRAG -v
 ```
 
-当前测试覆盖：**63 个静态测试** 全部通过 + **10 个 LLM 集成测试**。
+当前测试覆盖：**112 passed, 2 skipped, 0 failed**（8 个测试文件，跨 Agent / Tools / RAG / Graph / API）。
 
 ---
 
@@ -224,7 +287,6 @@ pytest tests/test_tools.py -v -m "not llm"
 
 - [ ] 支持更多简历格式（DOCX, HTML）
 - [ ] 编程题在线编辑器（Monaco Editor）
-- [ ] 面试历史记录持久化（SQLite/PostgreSQL）
 - [ ] 多语言支持（英文面试）
 - [ ] 语音面试模式（ASR + TTS）
 - [ ] Docker 一键部署

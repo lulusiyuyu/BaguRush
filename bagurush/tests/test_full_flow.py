@@ -80,8 +80,13 @@ def test_state_typeddict():
 
 
 def test_router_rules():
-    """Router 逻辑验证（无 LLM 调用）。"""
+    """Router 逻辑验证（测试 fallback 规则，mock 掉 LLM）。"""
+    from unittest.mock import patch
     from agents.router import router_node
+
+    def _run(state):
+        with patch("agents.router._llm_router", side_effect=RuntimeError("mock")):
+            return router_node(state)
 
     # 规则 1：达到最大题数
     state = {
@@ -90,7 +95,7 @@ def test_router_rules():
         "current_topic_index": 0, "interview_plan": [{"topic": "A"}],
         "current_evaluation": {"overall_score": 9.0},
     }
-    result = router_node(state)
+    result = _run(state)
     assert result["next_action"] == "end_interview"
 
     # 规则 2：低分触发追问
@@ -100,7 +105,7 @@ def test_router_rules():
         "current_topic_index": 0, "interview_plan": [{"topic": "A"}, {"topic": "B"}],
         "current_evaluation": {"overall_score": 4.5},
     }
-    result2 = router_node(state2)
+    result2 = _run(state2)
     assert result2["next_action"] == "follow_up"
     assert result2["follow_up_count"] == 1
 
@@ -111,7 +116,7 @@ def test_router_rules():
         "current_topic_index": 0, "interview_plan": [{"topic": "A"}, {"topic": "B"}],
         "current_evaluation": {"overall_score": 8.0},
     }
-    result3 = router_node(state3)
+    result3 = _run(state3)
     assert result3["next_action"] == "next_question"
     assert result3["current_topic_index"] == 1
 
@@ -122,7 +127,7 @@ def test_router_rules():
         "current_topic_index": 0, "interview_plan": [{"topic": "A"}],
         "current_evaluation": {"overall_score": 8.0},
     }
-    result4 = router_node(state4)
+    result4 = _run(state4)
     assert result4["next_action"] == "end_interview"
 
 

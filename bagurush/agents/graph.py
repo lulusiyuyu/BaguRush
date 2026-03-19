@@ -44,6 +44,7 @@ BaguRush LangGraph 状态图定义。
   result = graph.invoke(Command(resume="候选人的回答"), config)
 """
 
+import os
 import sys
 from pathlib import Path
 
@@ -59,9 +60,26 @@ if str(_ROOT) not in sys.path:
 from agents.evaluator import evaluator_node
 from agents.interviewer import interviewer_node
 from agents.planner import planner_node
+from agents.replanner import replanner_node
 from agents.reporter import reporter_node
 from agents.router import route_decision, router_node
 from agents.state import InterviewState
+
+
+def _get_checkpointer():
+    """优先使用 SqliteSaver（持久化到磁盘），失败则回退到 MemorySaver（内存）。"""
+    db_path = os.getenv("SQLITE_DB_PATH", "sqlite:///interviews.db")
+    try:
+        from langgraph.checkpoint.sqlite import SqliteSaver
+        # 从 URI 提取文件路径
+        file_path = db_path.replace("sqlite:///", "")
+        conn = __import__("sqlite3").connect(file_path, check_same_thread=False)
+        saver = SqliteSaver(conn)
+        print(f"[Graph] 使用 SqliteSaver 持久化: {file_path}")
+        return saver
+    except Exception as e:
+        print(f"[Graph] SqliteSaver 初始化失败，回退到 MemorySaver: {e}")
+        return MemorySaver()
 
 
 def build_interview_graph():
@@ -78,6 +96,7 @@ def build_interview_graph():
     builder.add_node("interviewer", interviewer_node)
     builder.add_node("evaluator", evaluator_node)
     builder.add_node("router", router_node)
+    builder.add_node("replanner", replanner_node)
     builder.add_node("reporter", reporter_node)
 
     # 固定边
@@ -86,6 +105,7 @@ def build_interview_graph():
     builder.add_edge("interviewer", "evaluator")
     builder.add_edge("evaluator", "router")
     builder.add_edge("reporter", END)
+    builder.add_edge("replanner", "interviewer")  # replan 后继续出题
 
     # 条件边：router 根据 next_action 决定下一节点
     builder.add_conditional_edges(
@@ -94,12 +114,15 @@ def build_interview_graph():
         {
             "follow_up": "interviewer",
             "next_question": "interviewer",
+            "switch_topic": "interviewer",
+            "change_difficulty": "interviewer",
+            "replan": "replanner",
             "end_interview": "reporter",
         },
     )
 
-    # 编译：使用 MemorySaver 支持多轮持久化，在 interviewer 前暂停等待候选人输入
-    checkpointer = MemorySaver()
+    # 编译：优先使用 SqliteSaver 持久化（重启不丢失），回退到 MemorySaver（内存）
+    checkpointer = _get_checkpointer()
     graph = builder.compile(
         checkpointer=checkpointer,
         interrupt_before=["interviewer"],

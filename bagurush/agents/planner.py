@@ -155,6 +155,45 @@ def planner_node(state: InterviewState) -> Dict[str, Any]:
         "total_questions_asked": 0,
         "all_evaluations": [],
         "next_action": "next_question",
+        "difficulty": "medium",
+        "completed_topics": [],
+        "new_findings": [],
+        "candidate_profile": _init_candidate_profile(resume_analysis),
         "messages": [AIMessage(content=f"面试大纲制定完成，共 {len(interview_plan)} 个话题：" +
                                "、".join(t["topic"] for t in interview_plan))],
+    }
+
+
+def _init_candidate_profile(resume_analysis: Dict[str, Any]) -> Dict[str, Any]:
+    """基于简历分析结果初始化粗略候选人画像。"""
+    strengths = resume_analysis.get("strengths", [])
+    weaknesses = resume_analysis.get("weaknesses", [])
+    level = resume_analysis.get("overall_level", "中级")
+
+    base_score = {"初级": 4.0, "中级": 5.5, "高级": 7.0}.get(level, 5.0)
+
+    # 5 个默认维度
+    dim_names = ["algorithm", "system_design", "project_depth", "communication", "fundamentals"]
+    dimensions = {}
+    for d in dim_names:
+        dimensions[d] = {"score": base_score, "confidence": 0.2, "evidence": []}
+
+    # 简历提到的优势维度初始分略高（待验证）
+    strength_keywords = {
+        "算法": "algorithm", "数据结构": "algorithm",
+        "系统设计": "system_design", "架构": "system_design",
+        "项目": "project_depth",
+        "沟通": "communication", "表达": "communication",
+        "基础": "fundamentals", "计算机基础": "fundamentals",
+    }
+    for s in strengths:
+        for kw, dim in strength_keywords.items():
+            if kw in s and dim in dimensions:
+                dimensions[dim]["score"] = min(10.0, dimensions[dim]["score"] + 1.5)
+                dimensions[dim]["evidence"].append(f"简历标注: {s}")
+
+    return {
+        "dimensions": dimensions,
+        "weak_spots": [strength_keywords.get(w, w) for w in weaknesses if strength_keywords.get(w)],
+        "strong_spots": [strength_keywords.get(s, s) for s in strengths if strength_keywords.get(s)],
     }

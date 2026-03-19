@@ -33,12 +33,12 @@ class TestGraphStructure:
         assert "router" in nodes
         assert "reporter" in nodes
 
-    def test_graph_has_five_nodes(self):
+    def test_graph_has_six_nodes(self):
         from agents.graph import build_interview_graph
         g = build_interview_graph()
         # __start__ 和 __end__ 也算节点
         real_nodes = [n for n in g.nodes if not n.startswith("__")]
-        assert len(real_nodes) == 5
+        assert len(real_nodes) == 6
 
     def test_get_graph_singleton(self):
         """get_graph 应返回可复用的图实例。"""

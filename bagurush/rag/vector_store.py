@@ -104,13 +104,14 @@ class VectorStoreManager:
     #  检索
     # ------------------------------------------------------------------ #
 
-    def search(self, query: str, k: int = 3) -> List[Document]:
+    def search(self, query: str, k: int = 3, filter: dict = None) -> List[Document]:
         """
         语义检索 top-k 相关文档片段。
 
         Args:
             query: 检索查询文本。
             k:     返回结果数量（默认 3）。
+            filter: 可选的 metadata 过滤条件，透传给 FAISS.similarity_search。
 
         Returns:
             List[Document]: 相关度最高的 k 个 Document 片段。
@@ -122,7 +123,10 @@ class VectorStoreManager:
             raise RuntimeError(
                 "向量库尚未初始化，请先调用 build_index() 或 load()。"
             )
-        return self.vectorstore.similarity_search(query, k=k)
+        kwargs = {"k": k}
+        if filter:
+            kwargs["filter"] = filter
+        return self.vectorstore.similarity_search(query, **kwargs)
 
     def search_with_score(self, query: str, k: int = 3):
         """

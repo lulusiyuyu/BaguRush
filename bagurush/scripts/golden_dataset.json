@@ -1,0 +1,95 @@
+[
+  {
+    "question": "Python 中的 GIL 是什么？",
+    "answers": {
+      "excellent": "GIL 是 CPython 的全局解释器锁，同一时刻只允许一个线程执行字节码。它的存在主要是为了简化 CPython 的内存管理（引用计数不用加锁），但代价是 CPU 密集型多线程无法利用多核。解决方案有：multiprocessing 用多进程绕过 GIL；用 C 扩展在底层释放 GIL；或者用 asyncio 处理 I/O 密集型任务，因为 GIL 在等待 I/O 时会自动释放。",
+      "mediocre": "GIL 就是全局解释器锁，它让 Python 多线程不能同时执行。可以用多进程来解决。",
+      "poor": "GIL 是一种设计模式，用来管理 Python 的垃圾回收机制。"
+    },
+    "human_scores": {"excellent": 9.0, "mediocre": 5.5, "poor": 2.0}
+  },
+  {
+    "question": "解释哈希表的冲突解决方法。",
+    "answers": {
+      "excellent": "哈希冲突解决主要分两大类：开放地址法和链地址法。链地址法在每个桶维护一个链表（Java HashMap 在链表长度超过 8 时转红黑树）。开放地址法包括线性探测（步长 1，有聚集问题）、二次探测（步长为 i² 减少聚集）和双重哈希（用第二个哈希函数决定步长）。此外还有 Cuckoo Hashing（两个哈希函数两张表，查找 O(1) 最坏情况保证）和 Robin Hood Hashing（偷富济贫减少方差）。",
+      "mediocre": "冲突解决有链地址法和开放地址法。链地址法用链表，开放地址法一个个往后找空位。",
+      "poor": "哈希表不会有冲突，因为哈希函数保证每个键映射到唯一位置。"
+    },
+    "human_scores": {"excellent": 9.5, "mediocre": 5.0, "poor": 1.0}
+  },
+  {
+    "question": "什么是梯度消失？如何解决？",
+    "answers": {
+      "excellent": "梯度消失是深层网络反向传播时，梯度经过连乘逐层衰减趋近于零，导致浅层参数几乎不更新。根本原因是 sigmoid/tanh 的导数小于 1，连乘后指数级缩小。解决方案：1）ReLU 系列激活函数（正区间导数恒为 1）2）BatchNorm 稳定中间层分布 3）残差连接（ResNet 的 shortcut 让梯度直接回传）4）LSTM/GRU 的门控机制 5）合理的权重初始化（He init for ReLU, Xavier for tanh）。",
+      "mediocre": "梯度消失就是梯度变得很小，网络学不动。用 ReLU 和 BatchNorm 可以缓解。",
+      "poor": "梯度消失是因为学习率设置太小了，把学习率调大就好了。"
+    },
+    "human_scores": {"excellent": 9.0, "mediocre": 5.0, "poor": 1.5}
+  },
+  {
+    "question": "Redis 支持哪些数据结构？",
+    "answers": {
+      "excellent": "Redis 支持 5 种基本数据结构：String（最大 512MB，可做计数器/分布式锁）、List（双端链表/ziplist，消息队列）、Hash（字段-值映射，存储对象）、Set（无序去重集合，交并差操作）、Sorted Set（有序集合，排行榜）。Redis 5.0+ 还支持 Stream（消息流，类似 Kafka）、HyperLogLog（基数统计）、Bitmap（位操作）、GEO（地理位置）。底层编码会根据数据量自动在 ziplist/intset 和标准结构间切换。",
+      "mediocre": "Redis 有 String、List、Set、Hash、Sorted Set 五种。String 可以存字符串和数字。",
+      "poor": "Redis 只支持键值对存储，类似于一个大的 HashMap。"
+    },
+    "human_scores": {"excellent": 9.5, "mediocre": 5.5, "poor": 2.0}
+  },
+  {
+    "question": "解释 Transformer 的 Self-Attention 机制。",
+    "answers": {
+      "excellent": "Self-Attention 的核心是让序列中每个位置都能关注到其他所有位置。具体计算：输入经过三个线性变换得到 Q、K、V 矩阵。注意力权重 = softmax(QK^T / sqrt(d_k))，除以 sqrt(d_k) 是为了防止点积过大导致 softmax 梯度消失。最终输出是权重对 V 的加权和。Multi-Head 是并行 h 组独立的 attention（每组用不同的投影矩阵），拼接后再投影，能捕获不同子空间的语义关系。时间复杂度 O(n²d)，n 是序列长度。",
+      "mediocre": "Self-Attention 就是用 Q、K、V 三个矩阵算注意力分数，然后加权求和。Multi-Head 就是多算几次。",
+      "poor": "Self-Attention 和 CNN 的卷积核原理类似，都是通过滑动窗口提取局部特征。"
+    },
+    "human_scores": {"excellent": 9.0, "mediocre": 4.5, "poor": 1.0}
+  },
+  {
+    "question": "什么是 CAP 定理？",
+    "answers": {
+      "excellent": "嗯...我不太确定具体的定义，不过我理解 CAP 是说分布式系统在网络分区发生时，只能在一致性和可用性之间二选一。C 指所有节点看到相同数据，A 指每个请求都能得到响应，P 指网络分区时系统仍能运行。比如 ZooKeeper 选了 CP，分区时可能拒绝服务但保证一致；Cassandra 选了 AP，分区时继续服务但可能数据不一致...我记得是这样的。",
+      "mediocre": "CAP 定理说分布式系统不能同时满足一致性、可用性和分区容忍性，只能三选二。",
+      "poor": "CAP 定理是关于数据库事务的 ACID 特性的另一种说法，C 代表 Commit。"
+    },
+    "human_scores": {"excellent": 8.5, "mediocre": 5.0, "poor": 1.0}
+  },
+  {
+    "question": "解释推荐系统中的协同过滤。",
+    "answers": {
+      "excellent": "协同过滤分 User-CF 和 Item-CF。User-CF 找行为相似的用户，推荐他们喜欢但目标用户没看过的物品；Item-CF 找与用户已交互物品相似的物品推荐。相似度常用余弦相似度或皮尔逊系数。User-CF 适合用户量小物品多（如新闻推荐），Item-CF 适合物品量小但用户多（如电商）。缺点是冷启动问题和稀疏性，矩阵分解（如 ALS、SVD）可以缓解稀疏问题。",
+      "mediocre": "协同过滤就是根据其他用户的评分来给你推荐东西，有基于用户的和基于物品的两种。",
+      "poor": "协同过滤是一种内容匹配算法，根据物品的标签和属性来推荐相似的内容。"
+    },
+    "human_scores": {"excellent": 9.0, "mediocre": 5.0, "poor": 1.5}
+  },
+  {
+    "question": "Python 的 asyncio 是怎么工作的？",
+    "answers": {
+      "excellent": "",
+      "mediocre": "asyncio 是 Python 的异步编程库，用 async/await 写异步代码。",
+      "poor": "asyncio 就是把多线程换了个写法，底层还是用线程池实现并发的。"
+    },
+    "human_scores": {"excellent": 0.0, "mediocre": 5.0, "poor": 1.5},
+    "_note": "对抗测试：excellent 故意留空（不作答），应该给低分"
+  },
+  {
+    "question": "什么是动态规划？",
+    "answers": {
+      "excellent": "动态规划（DP）通过将问题拆解为互相重叠的子问题，利用最优子结构性质，自底向上（tabulation）或带备忘录自顶向下（memoization）避免重复计算，将指数级暴力搜索优化为多项式时间。关键步骤：1）定义状态 2）写状态转移方程 3）确定边界条件 4）确定遍历顺序。和贪心的区别是 DP 考虑全局最优，贪心只看局部。和分治的区别是 DP 的子问题重叠。经典应用：背包问题、最长公共子序列、编辑距离。",
+      "mediocre": "动态规划就是把大问题拆成小问题，然后用一个表格存起来避免重复计算。",
+      "poor": "动态规划其实就是递归加循环的组合使用方法，主要用来优化代码的执行速度和内存占用之间的平衡关系，它是一种非常重要的且广泛应用于各种场景的算法设计思想和编程技巧，在面试中经常会被问到，我认为掌握动态规划是成为优秀程序员的必要条件之一。"
+    },
+    "human_scores": {"excellent": 9.5, "mediocre": 5.0, "poor": 2.0},
+    "_note": "对抗测试：poor 回答很长但答非所问"
+  },
+  {
+    "question": "TCP 三次握手的过程和原因是什么？",
+    "answers": {
+      "excellent": "好的，我试着回答一下...第一次握手，客户端发 SYN 包（seq=x）进入 SYN_SENT 状态。第二次，服务端回 SYN+ACK（seq=y, ack=x+1）进入 SYN_RCVD。第三次，客户端发 ACK（ack=y+1）进入 ESTABLISHED，服务端收到后也进入 ESTABLISHED。三次握手的原因...嗯...主要是防止已失效的连接请求到达服务端，如果只有两次握手，一个延迟的旧 SYN 到达服务端，服务端会误以为是新连接而分配资源。三次握手让双方都确认了对方的发送和接收能力...我不太确定还有没有其他原因。",
+      "mediocre": "三次握手就是 SYN → SYN+ACK → ACK，为了确认双方都能正常收发数据。",
+      "poor": "TCP 三次握手是为了加密数据传输，第一次发送加密密钥，第二次确认密钥，第三次开始传数据。"
+    },
+    "human_scores": {"excellent": 8.5, "mediocre": 5.0, "poor": 1.0},
+    "_note": "对抗测试：excellent 回答正确但语气犹豫，不应因此扣分"
+  }
+]

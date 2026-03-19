@@ -94,7 +94,7 @@ def _generate_question(state: InterviewState) -> str:
             job_role=state.get("job_role", ""),
             current_topic=current_topic.get("topic", ""),
             topic_description=current_topic.get("description", ""),
-            difficulty=current_topic.get("difficulty", "medium"),
+            difficulty=state.get("difficulty", "medium"),
             total_questions_asked=state.get("total_questions_asked", 0),
             max_questions=state.get("max_questions", 8),
             resume_summary=_get_resume_summary(state),

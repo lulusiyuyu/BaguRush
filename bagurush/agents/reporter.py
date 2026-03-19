@@ -28,6 +28,27 @@ from prompts.reporter_prompt import REPORTER_SYSTEM_PROMPT, REPORTER_USER_TEMPLA
 load_dotenv()
 
 
+def _get_token_summary_markdown(session_id: str) -> str:
+    """获取 Token 消耗数据并格式化为 Markdown 表格。"""
+    try:
+        from utils.token_tracker import get_tracker
+        tracker = get_tracker(session_id)
+        summary = tracker.get_summary()
+        if summary["llm_calls"] == 0:
+            return ""
+        return (
+            "## 💰 Token 消耗\n\n"
+            "| 指标 | 数量 |\n"
+            "|------|------|\n"
+            f"| Prompt Tokens | {summary['prompt_tokens']:,} |\n"
+            f"| Completion Tokens | {summary['completion_tokens']:,} |\n"
+            f"| **总 Token** | **{summary['total_tokens']:,}** |\n"
+            f"| LLM 调用次数 | {summary['llm_calls']} |\n"
+        )
+    except Exception:
+        return ""
+
+
 def _get_llm() -> ChatOpenAI:
     from utils.llm_config import get_llm
     return get_llm(temperature=0.3)
@@ -133,6 +154,12 @@ def reporter_node(state: InterviewState) -> Dict[str, Any]:
     try:
         response = llm.invoke(messages)
         final_report = response.content.strip()
+
+        # 注入 Token 消耗汇总（如果可用）
+        token_section = _get_token_summary_markdown(state.get("session_id", ""))
+        if token_section:
+            final_report += "\n\n" + token_section
+
         print(f"[Reporter] 报告生成完成（{len(final_report)} 字符）")
     except Exception as e:
         print(f"[Reporter] ❌ 报告生成失败: {e}，使用简化报告")

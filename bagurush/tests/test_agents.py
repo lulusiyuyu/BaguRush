@@ -204,13 +204,19 @@ class TestReporterHelpers:
 
 
 # ============================================================ #
-#  Router 逻辑（纯函数，不需 LLM）
+#  Router 逻辑（测试 fallback if-else 规则，mock 掉 LLM）
 # ============================================================ #
 class TestRouterLogic:
-    """测试 router.py 路由规则。"""
+    """测试 router.py 路由规则（fallback 降级逻辑）。"""
+
+    def _run_router_with_fallback(self, state):
+        """Mock _llm_router 使其抛异常，从而触发 fallback 路径。"""
+        from unittest.mock import patch
+        from agents.router import router_node
+        with patch("agents.router._llm_router", side_effect=RuntimeError("mock")):
+            return router_node(state)
 
     def test_max_questions_reached(self):
-        from agents.router import router_node
         state = {
             "total_questions_asked": 8, "max_questions": 8,
             "follow_up_count": 0, "max_follow_ups": 2,
@@ -218,11 +224,10 @@ class TestRouterLogic:
             "interview_plan": [{"topic": "A"}, {"topic": "B"}],
             "current_evaluation": {"overall_score": 3.0},
         }
-        result = router_node(state)
+        result = self._run_router_with_fallback(state)
         assert result["next_action"] == "end_interview"
 
     def test_low_score_triggers_follow_up(self):
-        from agents.router import router_node
         state = {
             "total_questions_asked": 2, "max_questions": 8,
             "follow_up_count": 0, "max_follow_ups": 2,
@@ -230,12 +235,11 @@ class TestRouterLogic:
             "interview_plan": [{"topic": "A"}, {"topic": "B"}],
             "current_evaluation": {"overall_score": 4.0},
         }
-        result = router_node(state)
+        result = self._run_router_with_fallback(state)
         assert result["next_action"] == "follow_up"
         assert result["follow_up_count"] == 1
 
     def test_follow_up_exhausted_moves_to_next(self):
-        from agents.router import router_node
         state = {
             "total_questions_asked": 3, "max_questions": 8,
             "follow_up_count": 2, "max_follow_ups": 2,
@@ -243,12 +247,11 @@ class TestRouterLogic:
             "interview_plan": [{"topic": "A"}, {"topic": "B"}],
             "current_evaluation": {"overall_score": 4.0},
         }
-        result = router_node(state)
+        result = self._run_router_with_fallback(state)
         assert result["next_action"] == "next_question"
         assert result["current_topic_index"] == 1
 
     def test_high_score_next_topic(self):
-        from agents.router import router_node
         state = {
             "total_questions_asked": 1, "max_questions": 8,
             "follow_up_count": 0, "max_follow_ups": 1,
@@ -256,13 +259,12 @@ class TestRouterLogic:
             "interview_plan": [{"topic": "A"}, {"topic": "B"}, {"topic": "C"}],
             "current_evaluation": {"overall_score": 8.5},
         }
-        result = router_node(state)
+        result = self._run_router_with_fallback(state)
         assert result["next_action"] == "next_question"
         assert result["current_topic_index"] == 1
         assert result["follow_up_count"] == 0
 
     def test_all_topics_done(self):
-        from agents.router import router_node
         state = {
             "total_questions_asked": 3, "max_questions": 8,
             "follow_up_count": 0, "max_follow_ups": 1,
@@ -270,7 +272,7 @@ class TestRouterLogic:
             "interview_plan": [{"topic": "A"}, {"topic": "B"}, {"topic": "C"}],
             "current_evaluation": {"overall_score": 8.0},
         }
-        result = router_node(state)
+        result = self._run_router_with_fallback(state)
         assert result["next_action"] == "end_interview"
 
     def test_route_decision(self):
@@ -329,3 +331,131 @@ class TestSchemas:
         resp = HistoryResponse(session_id="test", messages=[msg])
         assert len(resp.messages) == 1
         assert resp.messages[0].role == "interviewer"
+
+
+# ============================================================ #
+#  Phase 1.5: Interviewer Prompt RAG 验证
+# ============================================================ #
+
+class TestInterviewerPromptRAG:
+    """验证 Interviewer prompt 鼓励调用 RAG。"""
+
+    def test_prompt_encourages_rag(self):
+        from prompts.interviewer_prompt import INTERVIEWER_SYSTEM_PROMPT
+        # 确认不再有 discourage 的话
+        assert "不必每次都调用工具" not in INTERVIEWER_SYSTEM_PROMPT
+        assert "通常直接基于已有知识" not in INTERVIEWER_SYSTEM_PROMPT
+
+    def test_prompt_has_mandatory_scenarios(self):
+        from prompts.interviewer_prompt import INTERVIEWER_SYSTEM_PROMPT
+        assert "必须调用" in INTERVIEWER_SYSTEM_PROMPT
+        assert "search_tech_knowledge" in INTERVIEWER_SYSTEM_PROMPT
+
+    def test_prompt_templates_still_valid(self):
+        """确认模板的 format 占位符没被破坏。"""
+        from prompts.interviewer_prompt import (
+            INTERVIEWER_NEW_QUESTION_TEMPLATE,
+            INTERVIEWER_FOLLOW_UP_TEMPLATE,
+        )
+        result = INTERVIEWER_NEW_QUESTION_TEMPLATE.format(
+            candidate_name="测试", job_role="后端",
+            current_topic="Python", topic_description="基础",
+            difficulty="medium", total_questions_asked=1,
+            max_questions=8, resume_summary="简历摘要",
+        )
+        assert "Python" in result
+
+        result2 = INTERVIEWER_FOLLOW_UP_TEMPLATE.format(
+            candidate_name="测试", job_role="后端",
+            current_topic="Python", current_question="什么是GIL",
+            follow_up_count=1, max_follow_ups=2,
+            follow_up_suggestion="请追问细节",
+        )
+        assert "GIL" in result2
+
+
+# ============================================================ #
+#  Phase 2.5: Evaluator 双重检索验证
+# ============================================================ #
+
+class TestEvaluatorRAGEnhancement:
+    """验证 Evaluator 的双重检索逻辑。"""
+
+    def test_evaluator_handles_empty_answer(self):
+        """候选人回答为空时，不应调用第二次 RAG 检索。"""
+        from unittest.mock import patch, MagicMock
+        from agents.evaluator import evaluator_node
+        from langchain_core.messages import AIMessage
+
+        state = {
+            "current_question": "什么是死锁",
+            "messages": [AIMessage(content="问题", name="interviewer")],
+            "interview_plan": [{"topic": "OS"}],
+            "current_topic_index": 0,
+            "total_questions_asked": 0,
+            "candidate_profile": {},
+            "new_findings": [],
+        }
+
+        mock_rag = MagicMock(return_value="参考内容")
+        mock_eval = MagicMock(return_value='{"completeness":5,"accuracy":5,"depth":5,"expression":5,"overall_score":5.0,"feedback":"ok","follow_up_suggestion":"继续"}')
+
+        with patch("agents.evaluator.search_tech_knowledge") as mock_search, \
+             patch("agents.evaluator.evaluate_answer") as mock_evaluate:
+            mock_search.invoke = mock_rag
+            mock_evaluate.invoke = mock_eval
+            result = evaluator_node(state)
+
+        assert result["total_questions_asked"] == 1
+        assert result["current_evaluation"] is not None
+
+    def test_evaluator_rag_failure_graceful(self):
+        """RAG 检索失败时应降级，不影响评估流程。"""
+        from unittest.mock import patch, MagicMock
+        from agents.evaluator import evaluator_node
+        from langchain_core.messages import HumanMessage
+
+        state = {
+            "current_question": "什么是GIL",
+            "messages": [HumanMessage(content="GIL是锁", name="candidate")],
+            "interview_plan": [{"topic": "Python"}],
+            "current_topic_index": 0,
+            "total_questions_asked": 0,
+            "candidate_profile": {},
+            "new_findings": [],
+        }
+
+        mock_eval = MagicMock(return_value='{"completeness":5,"accuracy":5,"depth":5,"expression":5,"overall_score":5.0,"feedback":"ok","follow_up_suggestion":"继续"}')
+
+        with patch("agents.evaluator.search_tech_knowledge") as mock_search, \
+             patch("agents.evaluator.evaluate_answer") as mock_evaluate:
+            mock_search.invoke = MagicMock(side_effect=RuntimeError("RAG挂了"))
+            mock_evaluate.invoke = mock_eval
+            result = evaluator_node(state)
+
+        # RAG 失败但评估应该正常完成
+        assert result["current_evaluation"]["overall_score"] == 5.0
+
+
+# ============================================================ #
+#  Phase 3.5: Evaluator Prompt RAG 驱动追问验证
+# ============================================================ #
+
+class TestEvaluatorPromptRAG:
+    """验证 Evaluator prompt 要求基于参考资料追问。"""
+
+    def test_evaluator_prompt_has_rag_guidance(self):
+        from prompts.evaluator_prompt import EVALUATOR_SYSTEM_PROMPT
+        # 确认有追问原则指引
+        assert "参考资料" in EVALUATOR_SYSTEM_PROMPT
+
+    def test_evaluator_prompt_mentions_completeness_reference(self):
+        from prompts.evaluator_prompt import EVALUATOR_SYSTEM_PROMPT
+        assert "完整性" in EVALUATOR_SYSTEM_PROMPT or "completeness" in EVALUATOR_SYSTEM_PROMPT.lower()
+
+    def test_answer_evaluator_uses_reference(self):
+        """验证 evaluate_answer 工具接受 reference 参数。"""
+        from tools.answer_evaluator import evaluate_answer
+        # 确认工具签名中有 reference 参数
+        schema = evaluate_answer.args_schema.schema()
+        assert "reference" in schema.get("properties", {})

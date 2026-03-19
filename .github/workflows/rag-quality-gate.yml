@@ -1,0 +1,44 @@
+name: RAG Quality Gate
+
+on:
+  push:
+    paths:
+      - 'bagurush/rag/**'
+      - 'bagurush/prompts/**'
+      - 'bagurush/agents/**'
+      - 'bagurush/knowledge_base/**'
+      - 'bagurush/tools/**'
+
+jobs:
+  quality-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -r bagurush/requirements.txt
+
+      - name: Run RAGAS Evaluation
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+        run: |
+          cd bagurush
+          python scripts/run_evaluation.py --output results.json
+
+      - name: Quality Gate Check
+        run: |
+          cd bagurush
+          python scripts/quality_gate.py --results results.json
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ragas-results
+          path: bagurush/results.json

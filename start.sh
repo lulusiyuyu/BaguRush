@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # BaguRush 启动脚本
+# ⚠️  使用前请先激活 conda 环境：conda activate /mnt/d/ForWSL/env/bagurush
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -25,17 +26,14 @@ if [ ! -f "$PROJECT_DIR/.env" ]; then
     exit 1
 fi
 
-# 激活 conda 环境
-CONDA_ENV="/mnt/d/ForWSL/env/bagurush"
-if [ -d "$CONDA_ENV" ]; then
-    source /home/lsy/anaconda3/etc/profile.d/conda.sh
-    conda activate "$CONDA_ENV"
-    echo "已激活 conda 环境：$CONDA_ENV"
-else
-    echo "⚠️  未找到 conda 环境：$CONDA_ENV，使用系统 Python"
+# 检查 python 是否可用
+if ! command -v python &>/dev/null; then
+    echo "❌ 未找到 python 命令，请先激活 conda 环境："
+    echo "   conda activate /mnt/d/ForWSL/env/bagurush"
+    exit 1
 fi
 
-echo "正在启动 BaguRush..."
+echo "正在启动 BaguRush（python: $(which python)）..."
 cd "$PROJECT_DIR"
 
 nohup python -m uvicorn main:app --host 0.0.0.0 --port 8000 > "$LOG_FILE" 2>&1 &

@@ -16,10 +16,16 @@ __pycache__/
 uploads/*
 !uploads/.gitkeep
 
+# 数据源（体积大，不提交）
+data_sources/
+
 # FAISS 索引（构建产物，不提交）
 faiss_index/
 *.faiss
 *.pkl
+
+# BM25 索引
+bm25_index/
 
 # IDE / 编辑器
 .vscode/

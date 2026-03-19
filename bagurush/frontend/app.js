@@ -243,9 +243,14 @@ function renderEvaluation(evalData) {
   dom.evalFeedback.textContent = evalData.feedback || '';
 }
 
-function updateProgress(progressStr) {
-  dom.progressText.textContent = progressStr;
-  dom.infoProgress.textContent = progressStr;
+function updateProgress(progressStr, difficulty) {
+  let displayStr = progressStr;
+  if (difficulty) {
+    const diffLabel = {easy: '简单', medium: '中等', hard: '困难'}[difficulty] || difficulty;
+    displayStr += ` · ${diffLabel}`;
+  }
+  dom.progressText.textContent = displayStr;
+  dom.infoProgress.textContent = displayStr;
   const parts = progressStr.split('/');
   if (parts.length === 2) {
     state.totalAsked = parseInt(parts[0]) || 0;
@@ -446,7 +451,7 @@ async function submitAnswer() {
 
     // 更新进度
     if (data.progress) {
-      updateProgress(data.progress);
+      updateProgress(data.progress, data.difficulty);
     }
 
     // 更新话题高亮（估算：通过 topic 名称匹配或递增）
