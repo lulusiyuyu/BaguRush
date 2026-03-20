@@ -1,13 +1,14 @@
 name: RAG Quality Gate
 
 on:
-  push:
-    paths:
-      - 'bagurush/rag/**'
-      - 'bagurush/prompts/**'
-      - 'bagurush/agents/**'
-      - 'bagurush/knowledge_base/**'
-      - 'bagurush/tools/**'
+  workflow_dispatch:  # 手动触发，等 RAGAS 评估体系完善后再改回 push 触发
+  # push:
+  #   paths:
+  #     - 'bagurush/rag/**'
+  #     - 'bagurush/prompts/**'
+  #     - 'bagurush/agents/**'
+  #     - 'bagurush/knowledge_base/**'
+  #     - 'bagurush/tools/**'
 
 jobs:
   quality-check:
