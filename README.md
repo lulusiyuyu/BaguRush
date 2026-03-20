@@ -10,9 +10,7 @@ Whether it's **Python GIL**, **distributed system design**, or **recommendation 
 ## 🎬 Demo
 
 
-https://github.com/lulusiyuyu/BaguRush/raw/main/demo-video-2026-03-20.mp4
-
-> 如视频无法加载，请 clone 后查看 `demo-video-2026-03-20.mp4`
+https://github.com/user-attachments/assets/6263d387-b0fb-4fff-bbc1-89436be1f47b
 
 ---
 
