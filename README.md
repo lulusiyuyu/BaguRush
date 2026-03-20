@@ -9,11 +9,10 @@ Whether it's **Python GIL**, **distributed system design**, or **recommendation 
 
 ## 🎬 Demo
 
-https://github.com/user-attachments/assets/demo-2026-03-20.mp4
 
-<video src="demo-2026-03-20.mp4" controls width="100%"></video>
+https://github.com/lulusiyuyu/BaguRush/raw/main/demo-video-2026-03-20.mp4
 
-> 上方视频如无法播放，请 clone 后查看 `demo-2026-03-20.mp4`
+> 如视频无法加载，请 clone 后查看 `demo-video-2026-03-20.mp4`
 
 ---
 
@@ -212,7 +211,7 @@ python -m rag.vector_store --init
 BaguRush/
 ├── start.sh                     # 后台启动脚本
 ├── stop.sh                      # 停止服务脚本
-├── demo-2026-03-20.mp4          # Demo 演示视频
+├── demo-video-2026-03-20.mp4    # Demo 演示视频
 │
 ├── bagurush/                    # 项目主目录
 │   ├── main.py                  # FastAPI 入口（含 no-cache 中间件）
