@@ -408,6 +408,35 @@ body {
   line-height: 1.6;
 }
 
+/* === Right Panel — Agent Decision Card === */
+.agent-decision-card {
+  margin-top: 16px;
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-secondary);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  animation: msgIn 300ms ease-out;
+}
+.decision-content { display: flex; flex-direction: column; gap: 6px; }
+.decision-row {
+  display: flex; justify-content: space-between;
+  align-items: center; font-size: 13px;
+}
+.decision-label { color: var(--color-text-tertiary); }
+.decision-action-badge {
+  font-weight: 500; font-size: 12px;
+  padding: 2px 10px; border-radius: 12px;
+  background: rgba(60,140,255,0.08); color: var(--color-accent);
+}
+.decision-difficulty-badge {
+  font-size: 12px; font-weight: 500; color: var(--color-text-secondary);
+}
+.decision-reason {
+  font-size: 12px; color: var(--color-text-secondary);
+  line-height: 1.5; margin-top: 6px;
+  padding-top: 8px; border-top: 1px solid var(--color-border-secondary);
+}
+
 /* === Report View === */
 .report-view {
   position: fixed; top: 0; left: 0; right: 0; bottom: 0;

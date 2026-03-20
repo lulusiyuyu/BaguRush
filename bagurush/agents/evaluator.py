@@ -98,7 +98,7 @@ def evaluator_node(state: InterviewState) -> Dict[str, Any]:
     reference = ""
     try:
         # 2a. 用问题检索：找到该话题的标准知识点
-        question_rag = search_tech_knowledge.invoke({"query": current_question, "k": 4})
+        question_rag = search_tech_knowledge.invoke({"query": current_question, "k": 3})
 
         # 2b. 用候选人回答检索：验证候选人提到的技术细节
         answer_rag = ""
@@ -108,9 +108,9 @@ def evaluator_node(state: InterviewState) -> Dict[str, Any]:
         # 合并参考（总计约 2000 字）
         reference_parts = []
         if question_rag:
-            reference_parts.append(f"【话题知识点参考】\n{question_rag[:1200]}")
+            reference_parts.append(f"【话题知识点参考】\n{question_rag[:2500]}")
         if answer_rag:
-            reference_parts.append(f"【候选人提及概念验证】\n{answer_rag[:800]}")
+            reference_parts.append(f"【候选人提及概念验证】\n{answer_rag[:1500]}")
         reference = "\n---\n".join(reference_parts)
 
         print(f"[Evaluator] RAG 参考获取成功（{len(reference)} 字符，含回答验证）")

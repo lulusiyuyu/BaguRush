@@ -144,16 +144,16 @@ def load_directory(
 
 def split_documents(
     docs: List[Document],
-    chunk_size: int = 500,
-    chunk_overlap: int = 50,
+    chunk_size: int = 3000,
+    chunk_overlap: int = 500,
 ) -> List[Document]:
     """
     使用 RecursiveCharacterTextSplitter 对文档进行切分。
 
     Args:
         docs:          待切分的 Document 列表。
-        chunk_size:    每个 chunk 的最大字符数（默认 500）。
-        chunk_overlap: 相邻 chunk 的重叠字符数（默认 50）。
+        chunk_size:    每个 chunk 的最大字符数（默认 1500）。
+        chunk_overlap: 相邻 chunk 的重叠字符数（默认 300）。
 
     Returns:
         List[Document]: 切分后的 Document 列表，metadata 会被继承。
@@ -161,8 +161,8 @@ def split_documents(
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap,
-        # 中文优先按段落/句子切分，避免切断语义
-        separators=["\n\n", "\n", "。", "！", "？", "；", "，", " ", ""],
+        # 优先按 Markdown 标题切分，保持知识点完整
+        separators=["\n## ", "\n### ", "\n#### ", "\n\n", "\n", "。", "！", "？", "；", "，", " ", ""],
     )
     chunks = splitter.split_documents(docs)
     print(

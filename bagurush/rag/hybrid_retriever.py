@@ -124,30 +124,24 @@ def _match_filter(metadata: Dict[str, Any], filter: Dict[str, Any]) -> bool:
 # ------------------------------------------------------------------ #
 
 class BGEReranker:
-    """BGE Reranker 精排器，使用 FlagEmbedding 的 FlagReranker。"""
+    """BGE Reranker 精排器，使用 sentence-transformers 的 CrossEncoder。"""
 
     def __init__(self, model_name: str = "BAAI/bge-reranker-base"):
-        from FlagEmbedding import FlagReranker
+        from sentence_transformers import CrossEncoder
         try:
             import torch
-            _cuda = torch.cuda.is_available()
+            device = "cuda" if torch.cuda.is_available() else "cpu"
         except ImportError:
-            _cuda = False
-        use_fp16 = _cuda
-        devices = ["cuda:0"] if _cuda else None
-        self._reranker = FlagReranker(model_name, use_fp16=use_fp16, devices=devices)
-        _dev_str = "cuda" if _cuda else "cpu"
-        print(f"[Reranker] 加载完成: {model_name} (device={_dev_str}, fp16={use_fp16})")
+            device = "cpu"
+        self._model = CrossEncoder(model_name, device=device)
+        print(f"[Reranker] 加载完成: {model_name} (device={device})")
 
     def rerank(self, query: str, docs: List[Document], top_k: int = 5) -> List[Document]:
         """对候选文档做 Cross-Encoder 精排，返回 top-k。"""
         if not docs:
             return []
-        pairs = [[query, doc.page_content] for doc in docs]
-        scores = self._reranker.compute_score(pairs)
-        # compute_score 可能返回单个 float（只有一个 pair 时）
-        if isinstance(scores, (int, float)):
-            scores = [scores]
+        pairs = [(query, doc.page_content) for doc in docs]
+        scores = self._model.predict(pairs)
         ranked = sorted(zip(docs, scores), key=lambda x: x[1], reverse=True)
         return [doc for doc, _ in ranked[:top_k]]
 
@@ -241,11 +235,29 @@ class HybridRetriever:
         # 3. RRF 融合
         fused = reciprocal_rank_fusion(*result_lists)
 
+        # 3.5 同源去重：同一文件最多保留 2 条，避免结果被单文件霸占
+        fused = self._deduplicate_by_source(fused, max_per_source=2)
+
         # 4. Reranker 精排（如果可用）
         if self._reranker and len(fused) > final_k:
             return self._reranker.rerank(query, fused, top_k=final_k)
 
         return fused[:final_k]
+
+    @staticmethod
+    def _deduplicate_by_source(docs: List[Document], max_per_source: int = 2) -> List[Document]:
+        """同一 source_file 最多保留 max_per_source 条。无 source 的文档不参与去重。"""
+        source_count: Dict[str, int] = {}
+        result = []
+        for doc in docs:
+            source = doc.metadata.get("source_file", doc.metadata.get("source", ""))
+            if not source:
+                result.append(doc)
+                continue
+            source_count[source] = source_count.get(source, 0) + 1
+            if source_count[source] <= max_per_source:
+                result.append(doc)
+        return result
 
     def _fallback_search(
         self, query: str, k: int, filter: Optional[Dict[str, Any]] = None,

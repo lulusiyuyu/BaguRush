@@ -168,14 +168,22 @@ def infer_metadata(repo_name: str, rel_path: str, file_type: str) -> Dict:
 
 def clean_text(text: str) -> str:
     """基础文本清洗"""
+    # 去除 HTML 标签（<h2>、<div>、<img>、<br> 等）
+    text = re.sub(r'<[^>]+>', '', text)
+    # 去除 HTML 注释
+    text = re.sub(r'<!--.*?-->', '', text, flags=re.DOTALL)
+    # 去除目录锚点行（如 - [问题](#user-content-xxx) 或 - [问题](#xxx)）
+    text = re.sub(r'^\s*-\s*\[[^\]]*\]\(#[^)]*\)\s*$', '', text, flags=re.MULTILINE)
+    # 去除纯 URL 行（不在 markdown 链接中的裸 URL）
+    text = re.sub(r'^\s*https?://\S+\s*$', '', text, flags=re.MULTILINE)
+    # 去除多余图片引用（只留 alt text）
+    text = re.sub(r'!\[([^\]]*)\]\([^)]+\)', r'[\1]', text)
+    # 去除 HTML 实体
+    text = re.sub(r'&[a-zA-Z]+;', ' ', text)
     # 去除连续空行（保留最多 2 个换行）
     text = re.sub(r'\n{4,}', '\n\n\n', text)
     # 去除行尾空白
     text = re.sub(r'[ \t]+$', '', text, flags=re.MULTILINE)
-    # 去除 HTML 注释
-    text = re.sub(r'<!--.*?-->', '', text, flags=re.DOTALL)
-    # 去除多余图片引用（只留 alt text）
-    text = re.sub(r'!\[([^\]]*)\]\([^)]+\)', r'[\1]', text)
     return text.strip()
 
 
@@ -214,17 +222,17 @@ def read_ipynb(file_path: Path) -> Optional[str]:
 #  切分
 # ------------------------------------------------------------------ #
 
-def chunk_text(text: str, chunk_size: int = 600, chunk_overlap: int = 100) -> List[str]:
+def chunk_text(text: str, chunk_size: int = 1000, chunk_overlap: int = 200) -> List[str]:
     """
     递归切分文本（不依赖 langchain）。
-    优先按标题层级切分，其次按段落和换行。
+    用于非 Markdown 文件（.txt, .py, .java 等）的通用切分。
     chunk_size 和 chunk_overlap 以字符数为单位。
     """
-    separators = ["\n## ", "\n### ", "\n#### ", "\n\n", "\n", " ", ""]
+    separators = ["\n\n", "\n", " ", ""]
 
     def _split_recursive(text: str, seps: List[str]) -> List[str]:
         if len(text) <= chunk_size:
-            return [text] if len(text.strip()) > 30 else []
+            return [text] if len(text.strip()) > 80 else []
 
         # 找到能用的分隔符
         sep = None
@@ -254,16 +262,14 @@ def chunk_text(text: str, chunk_size: int = 600, chunk_overlap: int = 100) -> Li
                 if current:
                     chunks.append(current)
                 if len(part) > chunk_size:
-                    # 用下一级分隔符继续切
                     idx = seps.index(sep) if sep in seps else len(seps) - 1
                     next_seps = seps[idx + 1:] if idx + 1 < len(seps) else []
                     if next_seps:
                         chunks.extend(_split_recursive(part, next_seps))
                     else:
-                        # 硬切
                         for i in range(0, len(part), chunk_size):
                             piece = part[i:i + chunk_size]
-                            if len(piece.strip()) > 30:
+                            if len(piece.strip()) > 80:
                                 chunks.append(piece)
                     current = ""
                 else:
@@ -276,16 +282,137 @@ def chunk_text(text: str, chunk_size: int = 600, chunk_overlap: int = 100) -> Li
 
     raw_chunks = _split_recursive(text, separators)
 
-    # 添加 overlap：把上一个 chunk 的末尾拼到当前 chunk 的开头
+    # 添加 overlap
     result = []
     for i, chunk in enumerate(raw_chunks):
         if i > 0 and chunk_overlap > 0:
             prev_tail = raw_chunks[i - 1][-chunk_overlap:]
             chunk = prev_tail + chunk
-        if len(chunk.strip()) > 30:
+        if len(chunk.strip()) > 80:
             result.append(chunk.strip())
 
     return result
+
+
+def chunk_by_sections(text: str, max_section_size: int = 1500, sub_chunk_size: int = 1000,
+                      overlap: int = 200, min_chunk_size: int = 100) -> List[str]:
+    """
+    按 Markdown 标题边界切分（Structure-Aware Chunking）。
+
+    策略：
+    1. 用正则按 # / ## / ### / #### 标题拆分为独立 section
+    2. 每个 section ≤ max_section_size → 整个作为 1 个 chunk（不与相邻 section 合并）
+    3. 每个 section > max_section_size → 按段落二次切分为 ~sub_chunk_size 的子块
+    4. 过滤掉纯链接/目录 section 和太短的 chunk（< min_chunk_size）
+    5. 每个子块保留当前 section 的标题前缀
+
+    参数：
+        max_section_size: 超过此长度的 section 才进行二次切分（默认 1500 字符）
+        sub_chunk_size:   二次切分的目标块大小（默认 1000 字符，对齐 BGE 模型窗口）
+        overlap:          二次切分时的重叠量（默认 200 字符）
+        min_chunk_size:   过滤掉短于此的 chunk（默认 100 字符）
+    """
+    import re
+
+    # 第 1 步：按标题拆分成 sections
+    # 匹配 1-4 级标题行（保留标题本身）
+    sections = re.split(r'(?=\n#{1,4}\s)', text)
+
+    # 处理文件开头没有标题的情况
+    if sections and not sections[0].strip():
+        sections = sections[1:]
+
+    result = []
+
+    for section in sections:
+        section = section.strip()
+        if not section:
+            continue
+
+        # 过滤纯链接/目录 section：去掉所有链接后不足 min_chunk_size → 跳过
+        text_without_links = re.sub(r'\[([^\]]*)\]\([^)]+\)', r'\1', section)
+        text_without_links = re.sub(r'https?://\S+', '', text_without_links)
+        text_without_links = re.sub(r'- \[.*?\]\(#.*?\)', '', text_without_links)  # 目录锚点行
+        if len(text_without_links.strip()) < min_chunk_size:
+            continue
+
+        # 第 2 步：判断是否需要二次切分
+        if len(section) <= max_section_size:
+            # 短 section：整个作为 1 个 chunk
+            result.append(section)
+        else:
+            # 长 section：提取标题，按段落二次切分正文
+            title_match = re.match(r'(#{1,4}\s+.*?)(?:\n|$)', section)
+            title_prefix = title_match.group(1).strip() + "\n\n" if title_match else ""
+            body = section[title_match.end():] if title_match else section
+
+            # 按段落 → 行 递归切分
+            sub_seps = ["\n\n", "\n", " "]
+            sub_chunks = _sub_split(body, sub_seps, sub_chunk_size)
+
+            # 添加 overlap 并保留标题前缀
+            for i, chunk in enumerate(sub_chunks):
+                if i > 0 and overlap > 0 and len(sub_chunks) > 1:
+                    prev_tail = sub_chunks[i - 1][-overlap:]
+                    chunk = prev_tail + chunk
+                final = title_prefix + chunk.strip() if title_prefix else chunk.strip()
+                if len(final.strip()) >= min_chunk_size:
+                    result.append(final.strip())
+
+    return result
+
+
+def _sub_split(text: str, seps: List[str], target_size: int) -> List[str]:
+    """辅助函数：按给定分隔符列表递归切分文本到 target_size 以下。"""
+    if len(text) <= target_size:
+        return [text] if text.strip() else []
+
+    # 找到能用的分隔符
+    sep = None
+    for s in seps:
+        if s and s in text:
+            sep = s
+            break
+
+    if sep is None:
+        # 硬切
+        chunks = []
+        for i in range(0, len(text), target_size):
+            piece = text[i:i + target_size]
+            if piece.strip():
+                chunks.append(piece)
+        return chunks
+
+    parts = text.split(sep)
+    chunks = []
+    current = ""
+
+    for part in parts:
+        candidate = current + sep + part if current else part
+        if len(candidate) <= target_size:
+            current = candidate
+        else:
+            if current.strip():
+                chunks.append(current)
+            if len(part) > target_size:
+                # 递归用下一级分隔符
+                idx = seps.index(sep)
+                next_seps = seps[idx + 1:]
+                if next_seps:
+                    chunks.extend(_sub_split(part, next_seps, target_size))
+                else:
+                    for i in range(0, len(part), target_size):
+                        piece = part[i:i + target_size]
+                        if piece.strip():
+                            chunks.append(piece)
+                current = ""
+            else:
+                current = part
+
+    if current.strip():
+        chunks.append(current)
+
+    return chunks
 
 
 # ------------------------------------------------------------------ #
@@ -364,8 +491,11 @@ def process_all():
         meta = infer_metadata(repo_name, str(rel_path), file_type)
         language = detect_language(cleaned)
 
-        # 切分
-        chunks = chunk_text(cleaned)
+        # 切分：Markdown 文件按标题切分，其他文件按字数切分
+        if suffix in (".md", ".markdown"):
+            chunks = chunk_by_sections(cleaned)
+        else:
+            chunks = chunk_text(cleaned)
 
         for chunk_text_content in chunks:
             chunk_id += 1

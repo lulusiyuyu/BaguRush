@@ -43,6 +43,9 @@ class AnswerResponse(BaseModel):
     interview_ended: bool = Field(default=False, description="面试是否已结束")
     progress: str = Field(default="0/0", description="进度 (已答/总数)")
     topic: Optional[str] = Field(default=None, description="当前话题")
+    difficulty: Optional[str] = Field(default=None, description="当前难度: easy/medium/hard")
+    router_action: Optional[str] = Field(default=None, description="Router 决策动作")
+    router_reason: Optional[str] = Field(default=None, description="Router 决策理由")
 
 
 # ------------------------------------------------------------------ #

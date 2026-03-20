@@ -148,7 +148,9 @@ def _llm_router(state: InterviewState) -> Dict[str, Any]:
     print(f"[Router/LLM] action={action} | reason={reason}")
 
     # 根据 action 构建状态更新
-    return _build_state_update(state, action, decision)
+    result = _build_state_update(state, action, decision)
+    result["router_reason"] = reason
+    return result
 
 
 # ------------------------------------------------------------------ #
@@ -292,7 +294,25 @@ def router_node(state: InterviewState) -> Dict[str, Any]:
 
     try:
         result = _llm_router(state)
-        print(f"[Router] LLM 决策: {result.get('next_action')}")
+        llm_action = result.get("next_action")
+        print(f"[Router] LLM 决策: {llm_action}")
+
+        # ── 硬性约束：LLM 决策不可违反以下规则 ──
+        # 规则 1: 已达 max_questions → 强制结束
+        if total_asked >= max_questions:
+            if llm_action != "end_interview":
+                print(f"[Router] ⚠️ 硬性约束：已问 {total_asked}/{max_questions} 题，强制结束面试")
+                return _build_state_update(state, "end_interview", {})
+
+        # 规则 2: 追问超限 → 强制切换话题或结束
+        if llm_action == "follow_up" and follow_up_count >= max_follow_ups:
+            if current_topic_index + 1 < len(interview_plan):
+                print(f"[Router] ⚠️ 硬性约束：追问 {follow_up_count}/{max_follow_ups} 已达上限，切换话题")
+                return _build_state_update(state, "next_question", {})
+            else:
+                print(f"[Router] ⚠️ 硬性约束：追问达上限且无剩余话题，结束面试")
+                return _build_state_update(state, "end_interview", {})
+
         return result
     except Exception as e:
         print(f"[Router] LLM 决策失败，降级到 if-else: {e}")

@@ -191,7 +191,7 @@
         <!-- typing indicator -->
         <div id="typing-indicator" class="typing-indicator" style="display:none;">
           <div class="avatar avatar-interviewer">🤖</div>
-          <div class="avatar avatar-candidate" style="display:none;">🧑‍💻</div>
+          <div class="avatar avatar-candidate" style="display:none;">👤</div>
           <div class="typing-dots">
             <span></span><span></span><span></span>
           </div>
@@ -248,6 +248,22 @@
             </div>
           </div>
           <div id="eval-feedback" class="eval-feedback"></div>
+        </div>
+
+        <!-- Agent 决策卡片 -->
+        <div id="agent-decision-card" class="agent-decision-card" style="display:none;">
+          <h3 class="panel-title">🧠 Agent 决策</h3>
+          <div class="decision-content">
+            <div class="decision-row">
+              <span class="decision-label">决策</span>
+              <span id="decision-action" class="decision-action-badge">-</span>
+            </div>
+            <div class="decision-row">
+              <span class="decision-label">难度</span>
+              <span id="decision-difficulty" class="decision-difficulty-badge">中等</span>
+            </div>
+            <div id="decision-reason" class="decision-reason"></div>
+          </div>
         </div>
       </div>
     </aside>

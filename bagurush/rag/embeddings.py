@@ -8,6 +8,19 @@ import os
 import warnings
 from functools import lru_cache
 
+# 智能离线模式：模型已缓存则跳过联网检查，未缓存则允许下载
+if not os.environ.get("HF_HUB_OFFLINE"):
+    _cache_dir = os.path.join(
+        os.environ.get("HF_HOME", os.path.join(os.path.expanduser("~"), ".cache", "huggingface")),
+        "hub",
+    )
+    # 检查嵌入模型和 Reranker 模型是否都已缓存
+    _embed_cache = os.path.join(_cache_dir, "models--BAAI--bge-small-zh-v1.5")
+    _reranker_cache = os.path.join(_cache_dir, "models--BAAI--bge-reranker-base")
+    if os.path.isdir(_embed_cache) and os.path.isdir(_reranker_cache):
+        os.environ.setdefault("HF_HUB_OFFLINE", "1")
+        os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
+
 from dotenv import load_dotenv
 from langchain_core.embeddings import Embeddings
 

@@ -56,8 +56,21 @@ from api.routes import router as interview_router  # noqa: E402
 app.include_router(interview_router)
 
 # ------------------------------------------------------------------ #
-#  静态文件服务（前端）
+#  静态文件服务（前端）— 开发阶段禁用缓存
 # ------------------------------------------------------------------ #
+
+from starlette.middleware.base import BaseHTTPMiddleware
+
+class NoCacheStaticMiddleware(BaseHTTPMiddleware):
+    """为 /frontend/ 路径添加 no-cache 头，避免开发时浏览器缓存旧文件。"""
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        if request.url.path.startswith("/frontend/"):
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            response.headers["Pragma"] = "no-cache"
+        return response
+
+app.add_middleware(NoCacheStaticMiddleware)
 
 frontend_dir = _ROOT / "frontend"
 if frontend_dir.exists():

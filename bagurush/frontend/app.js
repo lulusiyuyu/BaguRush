@@ -182,7 +182,7 @@ function renderCandidateMessage(text) {
       <div class="msg-candidate">${escapeHtml(text)}</div>
       <span class="msg-time" style="text-align:right;">${formatTime()}</span>
     </div>
-    <div class="avatar avatar-candidate">🧑‍💻</div>
+    <div class="avatar avatar-candidate">👤</div>
   `;
   dom.typingIndicator.before(wrapper);
   state.messages.push({ role: 'candidate', content: text });
@@ -241,6 +241,30 @@ function renderEvaluation(evalData) {
   });
 
   dom.evalFeedback.textContent = evalData.feedback || '';
+}
+
+function renderAgentDecision(action, reason, difficulty) {
+  const card = document.getElementById('agent-decision-card');
+  if (!card) return;
+  card.style.display = '';
+
+  const actionLabels = {
+    'follow_up': '🔍 追问当前话题',
+    'next_question': '➡️ 进入下一话题',
+    'switch_topic': '🔄 跳转话题',
+    'change_difficulty': '📊 调整难度',
+    'end_interview': '🏁 结束面试',
+    'replan': '🔀 重新规划',
+  };
+  const actionEl = document.getElementById('decision-action');
+  if (actionEl) actionEl.textContent = actionLabels[action] || action;
+
+  const diffLabels = { easy: '🟢 简单', medium: '🟡 中等', hard: '🔴 困难' };
+  const diffEl = document.getElementById('decision-difficulty');
+  if (diffEl) diffEl.textContent = diffLabels[difficulty] || difficulty || '🟡 中等';
+
+  const reasonEl = document.getElementById('decision-reason');
+  if (reasonEl) reasonEl.textContent = reason || '';
 }
 
 function updateProgress(progressStr, difficulty) {
@@ -458,6 +482,11 @@ async function submitAnswer() {
     if (data.topic && state.plan.length) {
       const idx = state.plan.findIndex(p => p.topic === data.topic);
       if (idx >= 0) updatePlanHighlight(idx);
+    }
+
+    // 更新 Agent 决策
+    if (data.router_action) {
+      renderAgentDecision(data.router_action, data.router_reason, data.difficulty);
     }
 
     if (data.interview_ended) {

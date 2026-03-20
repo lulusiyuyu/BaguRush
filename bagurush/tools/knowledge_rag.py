@@ -92,7 +92,7 @@ def search_tech_knowledge(query: str, k: int = 3) -> str:
 
         lines = [f"# 技术知识检索：{query}\n"]
         for i, doc in enumerate(results, 1):
-            source = Path(doc.metadata.get("source", "unknown")).stem
+            source = doc.metadata.get("source_file", doc.metadata.get("source", "unknown"))
             lines.append(f"## [{i}] 来源：{source}")
             lines.append(doc.page_content.strip())
             lines.append("")

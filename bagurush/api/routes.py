@@ -246,6 +246,9 @@ async def submit_answer(session_id: str, body: AnswerRequest, request: Request):
                 interview_ended=True,
                 progress=f"{total_asked}/{max_q}",
                 topic=current_topic,
+                difficulty=vals.get("difficulty", "medium"),
+                router_action=next_action,
+                router_reason=vals.get("router_reason", ""),
             )
 
         # 面试未结束 → 图在 interviewer 前暂停，需让 interviewer 提问
@@ -268,6 +271,9 @@ async def submit_answer(session_id: str, body: AnswerRequest, request: Request):
             interview_ended=False,
             progress=f"{total_asked}/{max_q}",
             topic=current_topic,
+            difficulty=vals.get("difficulty", "medium"),
+            router_action=next_action,
+            router_reason=vals.get("router_reason", ""),
         )
 
     except Exception as e:

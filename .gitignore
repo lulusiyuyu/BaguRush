@@ -45,3 +45,11 @@ ProjectContext/
 # Server runtime
 server.log
 server.pid
+
+# SQLite databases
+*.db
+*.db-shm
+*.db-wal
+
+# Knowledge base chunks (generated)
+bagurush/knowledge_base/chunks/
